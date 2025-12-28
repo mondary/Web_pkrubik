@@ -23,12 +23,12 @@
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
-        padding: 140px 24px 24px;
+        padding: 88px 14px 14px;
       }
 
       h1,
       h2 {
-        margin: 0 0 12px 0;
+        margin: 0 0 6px 0;
       }
 
       .fixed-header {
@@ -44,42 +44,70 @@
       .header-inner {
         max-width: 1200px;
         margin: 0 auto;
-        padding: 16px 24px;
+        padding: 8px 14px;
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
         flex-wrap: wrap;
       }
 
       .header-title {
         margin: 0;
-        font-size: 22px;
+        font-size: 18px;
         letter-spacing: -0.01em;
       }
 
       .layout {
         display: grid;
-        gap: 16px;
-      }
-
-      .panels {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(3, minmax(240px, 1fr));
+        gap: 8px;
+        grid-template-columns: 1.1fr 0.9fr 1.2fr 0.8fr;
+        grid-template-areas:
+          "csv csv net history"
+          "mapping iso net history"
+          "list layers net history";
+        align-items: start;
       }
 
       .panel {
         background: var(--panel);
-        border-radius: 16px;
-        padding: 16px;
+        border-radius: 12px;
+        padding: 10px;
         display: grid;
-        gap: 12px;
+        gap: 8px;
+      }
+
+      .panel--csv {
+        grid-area: csv;
+      }
+
+      .panel--iso {
+        grid-area: iso;
+      }
+
+      .panel--net {
+        grid-area: net;
+      }
+
+      .panel--mapping {
+        grid-area: mapping;
+      }
+
+      .panel--layers {
+        grid-area: layers;
+      }
+
+      .panel--list {
+        grid-area: list;
+      }
+
+      .panel--history {
+        grid-area: history;
       }
 
       .controls {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) auto auto auto;
-        gap: 8px;
+        grid-template-columns: minmax(180px, 1fr) auto auto auto;
+        gap: 6px;
         align-items: center;
         flex: 1;
       }
@@ -87,7 +115,7 @@
       input[type="text"],
       select {
         width: 100%;
-        padding: 8px 10px;
+        padding: 6px 8px;
         border-radius: 10px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         background: #0f1320;
@@ -98,7 +126,7 @@
         border: none;
         background: #222a3a;
         color: var(--text);
-        padding: 8px 12px;
+        padding: 6px 10px;
         border-radius: 10px;
         cursor: pointer;
         font-weight: 600;
@@ -110,13 +138,14 @@
 
       pre {
         background: #0f1320;
-        padding: 12px;
+        padding: 8px;
         border-radius: 12px;
         color: var(--text);
         margin: 0;
         white-space: pre;
         font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-        font-size: 13px;
+        font-size: 12px;
+        line-height: 1.2;
       }
 
       .csv-line {
@@ -135,8 +164,8 @@
 
       .history {
         display: grid;
-        gap: 10px;
-        max-height: 50vh;
+        gap: 8px;
+        max-height: 220px;
         overflow: auto;
       }
 
@@ -151,7 +180,7 @@
 
       details {
         background: #0f1320;
-        padding: 8px;
+        padding: 6px;
         border-radius: 10px;
       }
 
@@ -206,8 +235,20 @@
       }
 
       @media (max-width: 900px) {
-        .panels {
+        .layout {
           grid-template-columns: 1fr;
+          grid-template-rows: auto;
+          grid-template-areas: none;
+        }
+
+        .panel--csv,
+        .panel--mapping,
+        .panel--iso,
+        .panel--list,
+        .panel--net,
+        .panel--layers,
+        .panel--history {
+          grid-area: auto;
         }
 
         .controls {
@@ -215,7 +256,7 @@
         }
 
         body {
-          padding-top: 200px;
+          padding-top: 150px;
         }
       }
     </style>
@@ -233,44 +274,43 @@
     </header>
 
     <div class="layout">
-      <section class="panel">
+      <section class="panel panel--csv">
         <h2>CSV view</h2>
         <pre id="state-csv" class="csv-line"></pre>
         <div class="legend">Layer code</div>
         <pre id="state-layercode" class="csv-line"></pre>
       </section>
 
-      <section class="panel">
+      <section class="panel panel--iso">
         <h2>Isometric ASCII</h2>
         <pre id="state-iso"></pre>
       </section>
 
-      <div class="panels">
-        <section class="panel">
-          <h2>List view</h2>
-          <pre id="state-list"></pre>
-        </section>
+      <section class="panel panel--mapping">
+        <h2>View-relative mapping</h2>
+        <pre id="state-mapping" class="csv-line"></pre>
+      </section>
 
-        <section class="panel">
-          <h2>Net view</h2>
-          <pre id="state-net"></pre>
-        </section>
+      <section class="panel panel--list">
+        <h2>List view</h2>
+        <pre id="state-list"></pre>
+      </section>
 
-        <section class="panel">
-          <h2>Layers</h2>
-          <pre id="state-layers"></pre>
-        </section>
+      <section class="panel panel--net">
+        <h2>Net view</h2>
+        <pre id="state-net"></pre>
+      </section>
 
-        <section class="panel">
-          <h2>View-relative mapping</h2>
-          <pre id="state-mapping" class="csv-line"></pre>
-        </section>
-      </div>
+      <section class="panel panel--layers">
+        <h2>Layers</h2>
+        <pre id="state-layers"></pre>
+      </section>
 
-      <section class="panel">
+      <section class="panel panel--history">
         <h2>History</h2>
         <div id="history" class="history"></div>
       </section>
+
     </div>
 
     <script>
