@@ -119,6 +119,10 @@
         font-size: 13px;
       }
 
+      .csv-line {
+        overflow-x: auto;
+      }
+
       .legend {
         color: var(--muted);
         font-size: 13px;
@@ -149,7 +153,10 @@
       }
 
       .c {
+        display: inline-block;
         font-weight: 700;
+        text-align: center;
+        width: 1ch;
       }
 
       .c-Y {
@@ -180,6 +187,10 @@
         color: #495063;
       }
 
+      .c-label {
+        color: var(--text);
+      }
+
       @media (max-width: 900px) {
         .panels {
           grid-template-columns: 1fr;
@@ -203,7 +214,6 @@
           <input id="sequence" type="text" value="R U R' U'" />
           <button id="apply">Apply</button>
           <button id="reset">Reset</button>
-          <button id="snapshot">Snapshot</button>
         </div>
       </div>
     </header>
@@ -224,6 +234,11 @@
         <section class="panel">
           <h2>Layers</h2>
           <pre id="state-layers"></pre>
+        </section>
+
+        <section class="panel">
+          <h2>CSV view</h2>
+          <pre id="state-csv" class="csv-line"></pre>
         </section>
       </div>
 
@@ -254,6 +269,7 @@
       const listEl = document.getElementById("state-list");
       const netEl = document.getElementById("state-net");
       const layersEl = document.getElementById("state-layers");
+      const csvEl = document.getElementById("state-csv");
       const historyEl = document.getElementById("history");
 
       function buildCoords() {
@@ -456,26 +472,42 @@
         return row.map(formatCell).join(" ");
       }
 
-      function formatList(colors) {
-        const faceWidth = size * 2 - 1;
-        const padLabel = (label) => {
-          const left = Math.floor((faceWidth - 1) / 2);
-          const right = faceWidth - 1 - left;
-          return `${" ".repeat(left)}${label}${" ".repeat(right)}`;
-        };
+      function formatCompactRow(row) {
+        return row.map(formatCell).join("");
+      }
 
+      function formatLabelRow(label) {
+        const cells = Array(size).fill("&nbsp;");
+        cells[Math.floor(size / 2)] = label;
+        return cells
+          .map((cell) => `<span class="c c-label">${cell}</span>`)
+          .join(" ");
+      }
+
+      function formatList(colors) {
         const faces = ["U", "R", "F", "D", "L", "B"].map((face) => ({
           face,
           rows: faceLines(face, colors).map(formatRow),
         }));
 
         const blocks = faces.map((block) => {
-          return [padLabel(block.face), ...block.rows];
+          return [formatLabelRow(block.face), ...block.rows];
         });
 
         const spacer = "   ";
         const merged = mergeRow(blocks, spacer);
         return merged.join("\n");
+      }
+
+      function formatCsv(colors) {
+        const order = ["U", "R", "F", "D", "L", "B"];
+        return order
+          .map((face) => {
+            const label = `<span class="c c-label">${face}</span>`;
+            const values = colors[face].map(formatCell).join("");
+            return `${label},${values}`;
+          })
+          .join(",");
       }
 
       function formatNetClassic(colors) {
@@ -539,6 +571,16 @@
         listEl.innerHTML = formatList(colors);
         netEl.innerHTML = formatNetClassic(colors);
         layersEl.innerHTML = formatLayers(colors);
+        csvEl.innerHTML = formatCsv(colors);
+        requestAnimationFrame(syncViewHeights);
+      }
+
+      function syncViewHeights() {
+        const targetHeight = netEl.offsetHeight;
+        if (!targetHeight) return;
+        [listEl, csvEl].forEach((el) => {
+          if (el) el.style.minHeight = `${targetHeight}px`;
+        });
       }
 
       function logState(label) {
@@ -564,15 +606,30 @@
         const listPre = document.createElement("pre");
         listPre.innerHTML = formatList(faceColors());
 
+        const csvTitle = document.createElement("div");
+        csvTitle.textContent = "CSV view";
+        const csvPre = document.createElement("pre");
+        csvPre.className = "csv-line";
+        csvPre.innerHTML = formatCsv(faceColors());
+
         wrapper.appendChild(netTitle);
         wrapper.appendChild(netPre);
         wrapper.appendChild(layerTitle);
         wrapper.appendChild(layerPre);
         wrapper.appendChild(listTitle);
         wrapper.appendChild(listPre);
+        wrapper.appendChild(csvTitle);
+        wrapper.appendChild(csvPre);
         entry.appendChild(summary);
         entry.appendChild(wrapper);
         historyEl.prepend(entry);
+        requestAnimationFrame(() => {
+          const targetHeight = netPre.offsetHeight;
+          if (!targetHeight) return;
+          [listPre, csvPre].forEach((el) => {
+            el.style.minHeight = `${targetHeight}px`;
+          });
+        });
       }
 
       function resetCube() {
@@ -597,11 +654,6 @@
 
       document.getElementById("reset").addEventListener("click", () => {
         resetCube();
-      });
-
-      document.getElementById("snapshot").addEventListener("click", () => {
-        step += 1;
-        logState(`Step ${step}: snapshot`);
       });
 
       resetCube();
