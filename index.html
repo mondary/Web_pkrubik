@@ -179,6 +179,48 @@
         font-size: 14px;
       }
 
+      .segmented {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        background: #0f1320;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 4px;
+      }
+
+      .segmented button {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: transparent;
+        font-size: 13px;
+      }
+
+      .segmented button.active {
+        background: #27314a;
+      }
+
+      .controls-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .icon-actions {
+        display: grid;
+        grid-auto-flow: column;
+        gap: 8px;
+      }
+
+      .icon-actions button {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        justify-content: center;
+        font-size: 16px;
+      }
+
       .stat {
         display: flex;
         align-items: baseline;
@@ -266,18 +308,25 @@
         <aside class="panel">
            <div class="action-row">
              <strong>Cube</strong>
-             <select id="cube-type">
-               <option value="2">2x2</option>
-               <option value="3" selected>3x3</option>
-               <option value="3-twisted">3x3 twisted</option>
-               <option value="4">4x4</option>
-             </select>
-             <select id="speed">
-               <option value="600">Lent</option>
-               <option value="350" selected>Normal</option>
-               <option value="180">Rapide</option>
-             </select>
+           <select id="cube-type">
+             <option value="2">2x2</option>
+             <option value="3" selected>3x3</option>
+             <option value="3-twisted">3x3 twisted</option>
+             <option value="4">4x4</option>
+           </select>
+           <div class="controls-row">
+             <div class="segmented" id="speed-segment">
+               <button type="button" data-speed="600" aria-label="Lent">🐢</button>
+               <button type="button" data-speed="350" class="active" aria-label="Normal">🐇</button>
+               <button type="button" data-speed="180" aria-label="Rapide">⚡</button>
+             </div>
+             <div class="icon-actions">
+               <button type="button" id="reset" aria-label="Reinitialiser">⟲</button>
+               <button type="button" id="scramble" aria-label="Melanger">🔀</button>
+             </div>
            </div>
+           <input type="hidden" id="speed" value="350" />
+          </div>
 
           <div class="action-row">
             <strong>Mouvements rapides</strong>
@@ -311,6 +360,7 @@
       const moveCountEl = document.getElementById("move-count");
       const cubeTypeEl = document.getElementById("cube-type");
       const speedEl = document.getElementById("speed");
+      const speedSegmentEl = document.getElementById("speed-segment");
 
       let cubeSize = 3;
       let coords = [];
@@ -701,6 +751,14 @@
         enqueueMoves(moves);
       });
 
+      document.getElementById("reset").addEventListener("click", () => {
+        resetState();
+      });
+
+      document.getElementById("scramble").addEventListener("click", () => {
+        scramble();
+      });
+
 
 
       cubeTypeEl.addEventListener("change", () => {
@@ -727,6 +785,14 @@
       rebuildMoveButtons();
       buildCube(cubeSize);
       resetState();
+
+      speedSegmentEl.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => {
+          speedSegmentEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+          button.classList.add("active");
+          speedEl.value = button.dataset.speed;
+        });
+      });
 
       const viewport = document.getElementById("viewport");
       let isDragging = false;
