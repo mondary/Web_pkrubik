@@ -65,7 +65,7 @@
       .panels {
         display: grid;
         gap: 16px;
-        grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+        grid-template-columns: repeat(3, minmax(240px, 1fr));
       }
 
       .panel {
@@ -78,7 +78,7 @@
 
       .controls {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) auto auto auto auto;
+        grid-template-columns: minmax(220px, 1fr) auto auto auto;
         gap: 8px;
         align-items: center;
         flex: 1;
@@ -200,12 +200,7 @@
       <div class="header-inner">
         <h1 class="header-title">Cube debug</h1>
         <div class="controls">
-          <input id="sequence" type="text" value="R U R U" />
-          <select id="view-select">
-            <option value="list">List (U R F D L B)</option>
-            <option value="net-classic" selected>Net (B U / L F R / D)</option>
-            <option value="net-front">U top, B bottom (U / L F R / D / B)</option>
-          </select>
+          <input id="sequence" type="text" value="R U R' U'" />
           <button id="apply">Apply</button>
           <button id="reset">Reset</button>
           <button id="snapshot">Snapshot</button>
@@ -214,11 +209,13 @@
     </header>
 
     <div class="layout">
-      <div class="legend">
-        Codes: U=Y, D=W, F=R, R=G, L=B, B=O
-      </div>
 
       <div class="panels">
+        <section class="panel">
+          <h2>List view</h2>
+          <pre id="state-list"></pre>
+        </section>
+
         <section class="panel">
           <h2>Net view</h2>
           <pre id="state-net"></pre>
@@ -254,10 +251,10 @@
       let stickers = [];
       let step = 0;
 
+      const listEl = document.getElementById("state-list");
       const netEl = document.getElementById("state-net");
       const layersEl = document.getElementById("state-layers");
       const historyEl = document.getElementById("history");
-      const viewSelectEl = document.getElementById("view-select");
 
       function buildCoords() {
         coords = Array.from({ length: size }, (_, i) => i - (size - 1) / 2);
@@ -460,18 +457,25 @@
       }
 
       function formatList(colors) {
-        const formatFaceHtml = (face) => {
-          const rows = faceLines(face, colors).map(formatRow).join("\n");
-          return `${face}\n${rows}`;
+        const faceWidth = size * 2 - 1;
+        const padLabel = (label) => {
+          const left = Math.floor((faceWidth - 1) / 2);
+          const right = faceWidth - 1 - left;
+          return `${" ".repeat(left)}${label}${" ".repeat(right)}`;
         };
-        return [
-          formatFaceHtml("U"),
-          formatFaceHtml("R"),
-          formatFaceHtml("F"),
-          formatFaceHtml("D"),
-          formatFaceHtml("L"),
-          formatFaceHtml("B"),
-        ].join("\n\n");
+
+        const faces = ["U", "R", "F", "D", "L", "B"].map((face) => ({
+          face,
+          rows: faceLines(face, colors).map(formatRow),
+        }));
+
+        const blocks = faces.map((block) => {
+          return [padLabel(block.face), ...block.rows];
+        });
+
+        const spacer = "   ";
+        const merged = mergeRow(blocks, spacer);
+        return merged.join("\n");
       }
 
       function formatNetClassic(colors) {
@@ -486,28 +490,9 @@
         const blank = blankLines(faceWidth);
 
         return [
-          ...mergeRow([B, U, blank], spacer),
+          ...mergeRow([blank, U, B], spacer),
           ...mergeRow([L, F, R], spacer),
           ...mergeRow([blank, D, blank], spacer),
-        ].join("\n");
-      }
-
-      function formatNetFront(colors) {
-        const faceWidth = size * 2 - 1;
-        const spacer = "   ";
-        const U = faceLines("U", colors).map(formatRow);
-        const D = faceLines("D", colors).map(formatRow);
-        const L = faceLines("L", colors).map(formatRow);
-        const F = faceLines("F", colors).map(formatRow);
-        const R = faceLines("R", colors).map(formatRow);
-        const B = faceLines("B", colors).map(formatRow);
-        const blank = blankLines(faceWidth);
-
-        return [
-          ...mergeRow([blank, U, blank], spacer),
-          ...mergeRow([L, F, R], spacer),
-          ...mergeRow([blank, D, blank], spacer),
-          ...mergeRow([blank, B, blank], spacer),
         ].join("\n");
       }
 
@@ -515,8 +500,9 @@
         return size - 1 - coords.indexOf(y);
       }
 
-      function formatLayer(y, colors) {
+      function formatLayerRow(y, colors) {
         const rowIndex = layerRowIndex(y);
+        const rowNumber = coords.indexOf(y) + 1;
         const grids = {
           F: faceLines("F", colors),
           R: faceLines("R", colors),
@@ -530,43 +516,28 @@
           return `${face}: ${formatRow(grids[face][rowIndex])}`;
         });
 
-        const parts = [];
-        if (y === minCoord) {
-          parts.push("D:");
-          grids.D.forEach((row) => parts.push(formatRow(row)));
-          parts.push("");
-        }
-
-        parts.push(`Ring (row ${rowIndex + 1}):`);
-        parts.push(ring.join(" | "));
-
-        if (y === maxCoord) {
-          parts.push("");
-          parts.push("U:");
-          grids.U.forEach((row) => parts.push(formatRow(row)));
-        }
-
-        return parts.join("\n");
+        return [`(row ${rowNumber}):`, ring.join(" | ")].join("\n");
       }
 
       function formatLayers(colors) {
-        const layers = coords.map((y) => {
-          const name = y === minCoord ? "Layer 1 (bottom)" : y === maxCoord ? `Layer ${size} (top)` : `Layer ${coords.indexOf(y) + 1}`;
-          return `${name}\n${formatLayer(y, colors)}`;
-        });
-        return layers.join("\n\n---\n\n");
-      }
-
-      function formatNet(colors) {
-        const view = viewSelectEl.value;
-        if (view === "net-classic") return formatNetClassic(colors);
-        if (view === "net-front") return formatNetFront(colors);
-        return formatList(colors);
+        const top = faceLines("U", colors).map(formatRow);
+        const bottom = faceLines("D", colors).map(formatRow);
+        const rows = [...coords].reverse().map((y) => formatLayerRow(y, colors));
+        return [
+          "U:",
+          ...top,
+          "",
+          rows.join("\n\n"),
+          "",
+          "D:",
+          ...bottom,
+        ].join("\n");
       }
 
       function renderViews() {
         const colors = faceColors();
-        netEl.innerHTML = formatNet(colors);
+        listEl.innerHTML = formatList(colors);
+        netEl.innerHTML = formatNetClassic(colors);
         layersEl.innerHTML = formatLayers(colors);
       }
 
@@ -581,17 +552,24 @@
         const netTitle = document.createElement("div");
         netTitle.textContent = "Net view";
         const netPre = document.createElement("pre");
-        netPre.innerHTML = formatNet(faceColors());
+        netPre.innerHTML = formatNetClassic(faceColors());
 
         const layerTitle = document.createElement("div");
         layerTitle.textContent = "Layers";
         const layerPre = document.createElement("pre");
         layerPre.innerHTML = formatLayers(faceColors());
 
+        const listTitle = document.createElement("div");
+        listTitle.textContent = "List view";
+        const listPre = document.createElement("pre");
+        listPre.innerHTML = formatList(faceColors());
+
         wrapper.appendChild(netTitle);
         wrapper.appendChild(netPre);
         wrapper.appendChild(layerTitle);
         wrapper.appendChild(layerPre);
+        wrapper.appendChild(listTitle);
+        wrapper.appendChild(listPre);
         entry.appendChild(summary);
         entry.appendChild(wrapper);
         historyEl.prepend(entry);
@@ -624,10 +602,6 @@
       document.getElementById("snapshot").addEventListener("click", () => {
         step += 1;
         logState(`Step ${step}: snapshot`);
-      });
-
-      viewSelectEl.addEventListener("change", () => {
-        renderViews();
       });
 
       resetCube();
