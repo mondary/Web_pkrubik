@@ -206,6 +206,19 @@
         font-size: 12px;
       }
 
+      .coords-overlay {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #f4f6fb;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        pointer-events: none;
+      }
+
       @media (max-width: 900px) {
         .layout {
           grid-template-columns: 1fr;
@@ -220,41 +233,37 @@
   </head>
   <body>
     <div class="app">
-      <header>
-        <span class="pill">3x3 classique</span>
-        <h1>Simulateur Rubik's Cube</h1>
-        <p>Faites tourner le cube, appliquez des mouvements et saisissez vos algorithmes.</p>
-      </header>
+       <header>
+         <h1>Simulateur Rubik's Cube</h1>
+         <p>Faites tourner le cube, appliquez des mouvements et saisissez vos algorithmes.</p>
+       </header>
 
       <section class="layout">
-        <div class="stage">
-          <div class="viewport" id="viewport">
-            <div class="cube" id="cube"></div>
-          </div>
-          <p class="small">
-            Glissez pour orienter le cube. Les mouvements utilisent la notation internationale (U, D, L, R, F, B).
-          </p>
-        </div>
+         <div class="stage">
+           <div class="viewport" id="viewport">
+             <div class="cube" id="cube"></div>
+             <div class="coords-overlay" id="coords-overlay">rotX: 0, rotY: 0</div>
+           </div>
+           <p class="small">
+             Glissez pour orienter le cube. Les mouvements utilisent la notation internationale (U, D, L, R, F, B).
+           </p>
+         </div>
 
         <aside class="panel">
-          <div class="action-row">
-            <strong>Cube</strong>
-            <select id="cube-type">
-              <option value="2">2x2</option>
-              <option value="3" selected>3x3</option>
-              <option value="3-twisted">3x3 twisted</option>
-              <option value="4">4x4</option>
-            </select>
-          </div>
-
-          <div class="action-row">
-            <strong>Vitesse de rotation</strong>
-            <select id="speed">
-              <option value="600">Lent</option>
-              <option value="350" selected>Normal</option>
-              <option value="180">Rapide</option>
-            </select>
-          </div>
+           <div class="action-row">
+             <strong>Cube</strong>
+             <select id="cube-type">
+               <option value="2">2x2</option>
+               <option value="3" selected>3x3</option>
+               <option value="3-twisted">3x3 twisted</option>
+               <option value="4">4x4</option>
+             </select>
+             <select id="speed">
+               <option value="600">Lent</option>
+               <option value="350" selected>Normal</option>
+               <option value="180">Rapide</option>
+             </select>
+           </div>
 
           <div class="action-row">
             <strong>Compteur</strong>
@@ -275,19 +284,32 @@
             <button id="apply-sequence">Appliquer la séquence</button>
           </div>
 
-          <div class="action-row">
-            <strong>Actions</strong>
-            <button id="reset">Réinitialiser</button>
-            <button id="scramble">Mélanger</button>
-          </div>
+           <div class="action-row">
+             <strong>Actions</strong>
+             <button id="reset">Réinitialiser</button>
+             <button id="scramble">Mélanger</button>
+             <button id="log-coords">Afficher coordonnées</button>
+           </div>
+
+           <div class="action-row">
+             <strong>Coordonnées actuelles</strong>
+             <div class="stat">
+               <span>Rotation X</span>
+               <span id="rot-x">0</span>
+             </div>
+             <div class="stat">
+               <span>Rotation Y</span>
+               <span id="rot-y">0</span>
+             </div>
+           </div>
         </aside>
       </section>
     </div>
 
     <script>
       const COLORS = {
-        U: "#f4f6fb",
-        D: "#f6c445",
+        U: "#f6c445",
+        D: "#f4f6fb",
         F: "#2ecc71",
         B: "#2d6cdf",
         L: "#ff7a30",
@@ -692,9 +714,14 @@
         });
       });
 
-      document.getElementById("scramble").addEventListener("click", () => {
-        scramble();
-      });
+       document.getElementById("scramble").addEventListener("click", () => {
+         scramble();
+       });
+
+       document.getElementById("log-coords").addEventListener("click", () => {
+         console.log(`Coordonnées actuelles: rotX=${Math.round(rotX)}, rotY=${Math.round(rotY)}`);
+         alert(`Coordonnées: rotX=${Math.round(rotX)}, rotY=${Math.round(rotY)}`);
+       });
 
       cubeTypeEl.addEventListener("change", () => {
         const value = cubeTypeEl.value;
@@ -725,12 +752,15 @@
       let isDragging = false;
       let lastX = 0;
       let lastY = 0;
-      let rotX = -22;
-      let rotY = 32;
+       let rotX = 15;
+       let rotY = 70;
 
-      function updateCubeRotation() {
-        cubeEl.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-      }
+       function updateCubeRotation() {
+         cubeEl.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+         document.getElementById("rot-x").textContent = Math.round(rotX);
+         document.getElementById("rot-y").textContent = Math.round(rotY);
+         document.getElementById("coords-overlay").textContent = `rotX: ${Math.round(rotX)}, rotY: ${Math.round(rotY)}`;
+       }
 
       viewport.addEventListener("pointerdown", (event) => {
         isDragging = true;
