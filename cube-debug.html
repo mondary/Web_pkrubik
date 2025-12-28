@@ -61,11 +61,13 @@
         display: grid;
         gap: 8px;
         grid-template-columns: 1.1fr 0.9fr 1.2fr 0.8fr;
+        grid-template-rows: auto auto 1fr;
         grid-template-areas:
           "csv csv net history"
           "mapping iso net history"
           "list layers net history";
         align-items: start;
+        height: calc(100vh - 96px);
       }
 
       .panel {
@@ -102,6 +104,9 @@
 
       .panel--history {
         grid-area: history;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
       }
 
       .controls {
@@ -165,12 +170,14 @@
       .history {
         display: grid;
         gap: 8px;
-        max-height: 220px;
+        max-height: none;
+        min-height: 0;
         overflow: auto;
       }
 
       .history-row {
         overflow-x: auto;
+        min-height: 1.4em;
       }
 
       .history-label {
@@ -276,9 +283,8 @@
     <div class="layout">
       <section class="panel panel--csv">
         <h2>CSV view</h2>
-        <pre id="state-csv" class="csv-line"></pre>
-        <div class="legend">Layer code</div>
-        <pre id="state-layercode" class="csv-line"></pre>
+        <pre class="csv-line">version courte = <span id="state-csv"></span></pre>
+        <pre class="csv-line">version layer = <span id="state-layercode"></span></pre>
       </section>
 
       <section class="panel panel--iso">
@@ -333,9 +339,9 @@
 
       const listEl = document.getElementById("state-list");
       const netEl = document.getElementById("state-net");
-      const layersEl = document.getElementById("state-layers");
       const csvEl = document.getElementById("state-csv");
       const layerCodeEl = document.getElementById("state-layercode");
+      const layersEl = document.getElementById("state-layers");
       const mappingEl = document.getElementById("state-mapping");
       const isoEl = document.getElementById("state-iso");
       const historyEl = document.getElementById("history");
