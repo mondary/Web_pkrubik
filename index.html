@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Rubik's Cube 3x3 Simulator</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <style>
       :root {
         --bg: #0e1014;
@@ -221,6 +227,13 @@
         font-size: 16px;
       }
 
+      .notation-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+      }
+
       .stat {
         display: flex;
         align-items: baseline;
@@ -321,23 +334,25 @@
                <button type="button" data-speed="180" aria-label="Rapide">⚡</button>
              </div>
              <div class="icon-actions">
-               <button type="button" id="reset" aria-label="Reinitialiser">⟲</button>
-               <button type="button" id="scramble" aria-label="Melanger">🔀</button>
+               <button type="button" id="reset" aria-label="Reinitialiser"><i class="fa-solid fa-rotate-left"></i></button>
+               <button type="button" id="scramble" aria-label="Melanger"><i class="fa-solid fa-shuffle"></i></button>
              </div>
            </div>
            <input type="hidden" id="speed" value="350" />
           </div>
 
+           <div class="action-row">
+             <strong>Notation</strong>
+             <div class="notation-row">
+               <input id="sequence-input" type="text" placeholder="R U R' U'" />
+               <button id="apply-sequence" aria-label="Appliquer la sequence"><i class="fa-solid fa-play"></i></button>
+             </div>
+           </div>
+
           <div class="action-row">
             <strong>Mouvements rapides</strong>
             <div class="moves" id="move-buttons"></div>
           </div>
-
-           <div class="action-row">
-             <strong>Notation</strong>
-             <input id="sequence-input" type="text" placeholder="R U R' U'" />
-             <button id="apply-sequence">Appliquer la séquence</button>
-           </div>
         </aside>
       </section>
     </div>
