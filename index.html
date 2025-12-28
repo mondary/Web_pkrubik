@@ -288,19 +288,6 @@
              <strong>Actions</strong>
              <button id="reset">Réinitialiser</button>
              <button id="scramble">Mélanger</button>
-             <button id="log-coords">Afficher coordonnées</button>
-           </div>
-
-           <div class="action-row">
-             <strong>Coordonnées actuelles</strong>
-             <div class="stat">
-               <span>Rotation X</span>
-               <span id="rot-x">0</span>
-             </div>
-             <div class="stat">
-               <span>Rotation Y</span>
-               <span id="rot-y">0</span>
-             </div>
            </div>
         </aside>
       </section>
@@ -718,11 +705,6 @@
          scramble();
        });
 
-       document.getElementById("log-coords").addEventListener("click", () => {
-         console.log(`Coordonnées actuelles: rotX=${Math.round(rotX)}, rotY=${Math.round(rotY)}`);
-         alert(`Coordonnées: rotX=${Math.round(rotX)}, rotY=${Math.round(rotY)}`);
-       });
-
       cubeTypeEl.addEventListener("change", () => {
         const value = cubeTypeEl.value;
         let size = 3;
@@ -752,13 +734,11 @@
       let isDragging = false;
       let lastX = 0;
       let lastY = 0;
-       let rotX = 15;
+       let rotX = -15;
        let rotY = 70;
 
        function updateCubeRotation() {
          cubeEl.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-         document.getElementById("rot-x").textContent = Math.round(rotX);
-         document.getElementById("rot-y").textContent = Math.round(rotY);
          document.getElementById("coords-overlay").textContent = `rotX: ${Math.round(rotX)}, rotY: ${Math.round(rotY)}`;
        }
 
