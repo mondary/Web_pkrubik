@@ -478,22 +478,22 @@
 
         switch (base) {
           case "U":
-            rotateLayer("y", maxCoord, turns);
+            rotateLayer("y", maxCoord, -turns);
             break;
           case "D":
-            rotateLayer("y", minCoord, -turns);
+            rotateLayer("y", minCoord, turns);
             break;
           case "R":
-            rotateLayer("x", maxCoord, turns);
+            rotateLayer("x", maxCoord, -turns);
             break;
           case "L":
-            rotateLayer("x", minCoord, -turns);
+            rotateLayer("x", minCoord, turns);
             break;
           case "F":
-            rotateLayer("z", maxCoord, turns);
+            rotateLayer("z", maxCoord, -turns);
             break;
           case "B":
-            rotateLayer("z", minCoord, -turns);
+            rotateLayer("z", minCoord, turns);
             break;
           default:
             break;
