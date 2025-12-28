@@ -23,12 +23,12 @@
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
-        padding: 88px 14px 14px;
+        padding: 72px 12px 12px;
       }
 
       h1,
       h2 {
-        margin: 0 0 6px 0;
+        margin: 0 0 4px 0;
       }
 
       .fixed-header {
@@ -44,66 +44,75 @@
       .header-inner {
         max-width: 1200px;
         margin: 0 auto;
-        padding: 8px 14px;
+        padding: 6px 12px;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
       }
 
       .header-title {
         margin: 0;
-        font-size: 18px;
+        font-size: 17px;
         letter-spacing: -0.01em;
       }
 
       .layout {
         display: grid;
-        gap: 8px;
-        grid-template-columns: 1.1fr 0.9fr 1.2fr 0.8fr;
-        grid-template-rows: auto auto 1fr;
-        grid-template-areas:
-          "csv csv net history"
-          "mapping iso net history"
-          "list layers net history";
+        gap: 6px;
+        grid-template-columns: 4fr 1fr;
         align-items: start;
-        height: calc(100vh - 96px);
+        height: calc(100vh - 78px);
+      }
+
+      .left-grid {
+        display: grid;
+        gap: 6px;
+        grid-template-columns: repeat(100, minmax(0, 1fr));
+        grid-auto-rows: minmax(0, auto);
+        align-items: start;
+        height: 100%;
       }
 
       .panel {
         background: var(--panel);
         border-radius: 12px;
-        padding: 10px;
+        padding: 8px;
         display: grid;
         gap: 8px;
       }
 
       .panel--csv {
-        grid-area: csv;
+        grid-column: 1 / -1;
+        grid-row: 1;
       }
 
       .panel--iso {
-        grid-area: iso;
+        grid-column: 1 / span 40;
+        grid-row: 3;
       }
 
       .panel--net {
-        grid-area: net;
+        grid-column: 55 / span 27;
+        grid-row: 2;
       }
 
       .panel--mapping {
-        grid-area: mapping;
+        grid-column: 61 / span 40;
+        grid-row: 3;
       }
 
       .panel--layers {
-        grid-area: layers;
+        grid-column: 28 / span 27;
+        grid-row: 2;
       }
 
       .panel--list {
-        grid-area: list;
+        grid-column: 1 / span 27;
+        grid-row: 2;
       }
 
       .panel--history {
-        grid-area: history;
         display: grid;
         grid-template-rows: auto 1fr;
         height: 100%;
@@ -112,7 +121,7 @@
       .controls {
         display: grid;
         grid-template-columns: minmax(180px, 1fr) auto auto auto;
-        gap: 6px;
+        gap: 4px;
         align-items: center;
         flex: 1;
       }
@@ -120,7 +129,7 @@
       input[type="text"],
       select {
         width: 100%;
-        padding: 6px 8px;
+        padding: 5px 6px;
         border-radius: 10px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         background: #0f1320;
@@ -143,14 +152,14 @@
 
       pre {
         background: #0f1320;
-        padding: 8px;
+        padding: 6px;
         border-radius: 12px;
         color: var(--text);
         margin: 0;
         white-space: pre;
         font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-        font-size: 12px;
-        line-height: 1.2;
+        font-size: 11px;
+        line-height: 1.15;
       }
 
       .csv-line {
@@ -177,7 +186,18 @@
 
       .history-row {
         overflow-x: auto;
-        min-height: 1.4em;
+        min-height: 1.2em;
+      }
+
+      .algo-list {
+        display: grid;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .algo-item {
+        color: var(--text);
       }
 
       .history-label {
@@ -245,7 +265,10 @@
         .layout {
           grid-template-columns: 1fr;
           grid-template-rows: auto;
-          grid-template-areas: none;
+        }
+
+        .left-grid {
+          grid-template-columns: 1fr;
         }
 
         .panel--csv,
@@ -255,7 +278,8 @@
         .panel--net,
         .panel--layers,
         .panel--history {
-          grid-area: auto;
+          grid-column: auto;
+          grid-row: auto;
         }
 
         .controls {
@@ -281,42 +305,53 @@
     </header>
 
     <div class="layout">
-      <section class="panel panel--csv">
-        <h2>CSV view</h2>
-        <pre class="csv-line">version courte = <span id="state-csv"></span></pre>
-        <pre class="csv-line">version layer = <span id="state-layercode"></span></pre>
-      </section>
+      <div class="left-grid">
+        <section class="panel panel--csv">
+          <h2>CSV view</h2>
+          <pre class="csv-line">version courte = <span id="state-csv"></span></pre>
+          <pre class="csv-line">version layer = <span id="state-layercode"></span></pre>
+        </section>
 
-      <section class="panel panel--iso">
-        <h2>Isometric ASCII</h2>
-        <pre id="state-iso"></pre>
-      </section>
+        <section class="panel panel--list">
+          <h2>List view</h2>
+          <pre id="state-list"></pre>
+        </section>
 
-      <section class="panel panel--mapping">
-        <h2>View-relative mapping</h2>
-        <pre id="state-mapping" class="csv-line"></pre>
-      </section>
+        <section class="panel panel--layers">
+          <h2>Layers</h2>
+          <pre id="state-layers"></pre>
+        </section>
 
-      <section class="panel panel--list">
-        <h2>List view</h2>
-        <pre id="state-list"></pre>
-      </section>
+        <section class="panel panel--net">
+          <h2>Net view</h2>
+          <pre id="state-net"></pre>
+        </section>
 
-      <section class="panel panel--net">
-        <h2>Net view</h2>
-        <pre id="state-net"></pre>
-      </section>
+        <section class="panel panel--iso">
+          <h2>Isometric ASCII</h2>
+          <pre id="state-iso"></pre>
+        </section>
 
-      <section class="panel panel--layers">
-        <h2>Layers</h2>
-        <pre id="state-layers"></pre>
-      </section>
+        <section class="panel panel--mapping">
+          <h2>View-relative mapping</h2>
+          <pre id="state-mapping" class="csv-line"></pre>
+          <div class="algo-list">
+            <div class="algo-item">Sexy move: R U R' U'</div>
+            <div class="algo-item">Chapeau gauche: U R' U' R' F' U F</div>
+            <div class="algo-item">Chapeau droite: F' U' F R U R U'</div>
+            <div class="algo-item">Croix jaune: F R U R' U' F'</div>
+            <div class="algo-item">Chaise: R U2 R' U' R U' R'</div>
+            <div class="algo-item">Chaise gauche: R U R' U R U2 R'</div>
+            <div class="algo-item">Amis de droite: R U' L' U R' U' L U</div>
+            <div class="algo-item">Amis de gauche: L' U R U' L U R' U'</div>
+          </div>
+        </section>
+      </div>
 
       <section class="panel panel--history">
         <h2>History</h2>
         <div id="history" class="history"></div>
       </section>
-
     </div>
 
     <script>

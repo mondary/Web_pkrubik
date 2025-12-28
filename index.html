@@ -192,6 +192,35 @@
         gap: 10px;
       }
 
+      .algo-label {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .move-step {
+        padding: 0 2px;
+        border-radius: 6px;
+      }
+
+      .move-step.active {
+        color: var(--accent);
+        background: rgba(247, 179, 43, 0.18);
+      }
+
+      .algo-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .algo-step {
+        white-space: nowrap;
+        justify-content: center;
+      }
+
       input[type="text"],
       select {
         width: 100%;
@@ -371,7 +400,38 @@
           <div class="action-row">
             <strong>Mouvements rapides</strong>
             <div class="moves" id="move-buttons"></div>
-            <button id="sexy-move" type="button">Sexy move · R U R' U'</button>
+            <div class="algo-row">
+              <button id="sexy-move" class="algo-main" type="button" data-algo="sexy" data-label="Sexy move" data-seq="R U R' U'">Sexy move</button>
+              <button class="algo-step" type="button" data-algo="sexy">Pas a pas</button>
+            </div>
+            <div class="algo-row">
+              <button id="left-hat" class="algo-main" type="button" data-algo="left-hat" data-label="Chapeau gauche" data-seq="U R' U' R' F' U F">Chapeau gauche</button>
+              <button class="algo-step" type="button" data-algo="left-hat">Pas a pas</button>
+            </div>
+            <div class="algo-row">
+              <button id="right-hat" class="algo-main" type="button" data-algo="right-hat" data-label="Chapeau droite" data-seq="F' U' F R U R U'">Chapeau droite</button>
+              <button class="algo-step" type="button" data-algo="right-hat">Pas a pas</button>
+            </div>
+            <div class="algo-row">
+              <button id="yellow-cross" class="algo-main" type="button" data-algo="yellow-cross" data-label="Croix jaune" data-seq="F R U R' U' F'">Croix jaune</button>
+              <button class="algo-step" type="button" data-algo="yellow-cross">Pas a pas</button>
+            </div>
+            <div class="algo-row">
+              <button id="chair" class="algo-main" type="button" data-algo="chair" data-label="Chaise" data-seq="R U2 R' U' R U' R'">Chaise</button>
+              <button class="algo-step" type="button" data-algo="chair">Pas a pas</button>
+            </div>
+            <div class="algo-row">
+              <button id="left-chair" class="algo-main" type="button" data-algo="left-chair" data-label="Chaise gauche" data-seq="R U R' U R U2 R'">Chaise gauche</button>
+              <button class="algo-step" type="button" data-algo="left-chair">Pas a pas</button>
+            </div>
+            <div class="algo-row">
+              <button id="right-friends" class="algo-main" type="button" data-algo="right-friends" data-label="Amis de droite" data-seq="R U' L' U R' U' L U">Amis de droite</button>
+              <button class="algo-step" type="button" data-algo="right-friends">Pas a pas</button>
+            </div>
+            <div class="algo-row">
+              <button id="left-friends" class="algo-main" type="button" data-algo="left-friends" data-label="Amis de gauche" data-seq="L' U R U' L U R' U'">Amis de gauche</button>
+              <button class="algo-step" type="button" data-algo="left-friends">Pas a pas</button>
+            </div>
           </div>
         </aside>
       </section>
@@ -931,6 +991,69 @@
         });
       }
 
+      const algoSequences = {
+        sexy: ["R", "U", "R'", "U'"],
+        "left-hat": ["U", "R'", "U'", "R'", "F'", "U", "F"],
+        "right-hat": ["F'", "U'", "F", "R", "U", "R", "U'"],
+        "yellow-cross": ["F", "R", "U", "R'", "U'", "F'"],
+        chair: ["R", "U2", "R'", "U'", "R", "U'", "R'"],
+        "left-chair": ["R", "U", "R'", "U", "R", "U2", "R'"],
+        "right-friends": ["R", "U'", "L'", "U", "R'", "U'", "L", "U"],
+        "left-friends": ["L'", "U", "R", "U'", "L", "U", "R'", "U'"],
+      };
+      const algoSteps = Object.keys(algoSequences).reduce((acc, key) => {
+        acc[key] = 0;
+        return acc;
+      }, {});
+      const algoSpans = {};
+
+      document.querySelectorAll(".algo-main").forEach((button) => {
+        const label = button.dataset.label || "";
+        const sequence = (button.dataset.seq || "").trim().split(/\s+/).filter(Boolean);
+        const seqSpans = sequence
+          .map((move) => `<span class="move-step" data-move="${move}">${move}</span>`)
+          .join(" ");
+        button.innerHTML = `<span class="algo-label">${label} · ${seqSpans}</span>`;
+        if (button.dataset.algo) {
+          algoSpans[button.dataset.algo] = Array.from(button.querySelectorAll(".move-step"));
+        }
+      });
+
+      function highlightAlgoStep(key, index) {
+        const spans = algoSpans[key];
+        if (!spans || !spans.length) return;
+        spans.forEach((span, idx) => {
+          span.classList.toggle("active", idx === index);
+        });
+      }
+
+      function clearAlgoHighlight(key) {
+        const spans = algoSpans[key];
+        if (!spans) return;
+        spans.forEach((span) => span.classList.remove("active"));
+      }
+
+      function stepAlgo(key) {
+        const sequence = algoSequences[key];
+        if (!sequence) return;
+        const index = algoSteps[key] % sequence.length;
+        highlightAlgoStep(key, index);
+        algoSteps[key] = (index + 1) % sequence.length;
+        enqueueMove(sequence[index]);
+      }
+
+      function resetAlgo(key) {
+        if (!(key in algoSteps)) return;
+        algoSteps[key] = 0;
+        clearAlgoHighlight(key);
+      }
+
+      document.querySelectorAll(".algo-step").forEach((button) => {
+        button.addEventListener("click", () => {
+          stepAlgo(button.dataset.algo);
+        });
+      });
+
       document.getElementById("apply-sequence").addEventListener("click", () => {
         const input = document.getElementById("sequence-input");
         const moves = parseSequence(input.value);
@@ -946,10 +1069,43 @@
       });
 
       document.getElementById("sexy-move").addEventListener("click", () => {
-        enqueueMoves(["R", "U", "R'", "U'"]);
+        resetAlgo("sexy");
+        enqueueMoves(algoSequences.sexy);
+      });
+      document.getElementById("left-hat").addEventListener("click", () => {
+        resetAlgo("left-hat");
+        enqueueMoves(algoSequences["left-hat"]);
       });
 
+      document.getElementById("right-hat").addEventListener("click", () => {
+        resetAlgo("right-hat");
+        enqueueMoves(algoSequences["right-hat"]);
+      });
 
+      document.getElementById("yellow-cross").addEventListener("click", () => {
+        resetAlgo("yellow-cross");
+        enqueueMoves(algoSequences["yellow-cross"]);
+      });
+
+      document.getElementById("chair").addEventListener("click", () => {
+        resetAlgo("chair");
+        enqueueMoves(algoSequences.chair);
+      });
+
+      document.getElementById("left-chair").addEventListener("click", () => {
+        resetAlgo("left-chair");
+        enqueueMoves(algoSequences["left-chair"]);
+      });
+
+      document.getElementById("right-friends").addEventListener("click", () => {
+        resetAlgo("right-friends");
+        enqueueMoves(algoSequences["right-friends"]);
+      });
+
+      document.getElementById("left-friends").addEventListener("click", () => {
+        resetAlgo("left-friends");
+        enqueueMoves(algoSequences["left-friends"]);
+      });
 
       cubeTypeEl.addEventListener("change", () => {
         const value = cubeTypeEl.value;
