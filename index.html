@@ -18,6 +18,12 @@
         --text: #f4f6fb;
         --muted: #b9c0d1;
         --accent: #f7b32b;
+        --face-u: #f6c445;
+        --face-d: #f4f6fb;
+        --face-f: #ff3b3b;
+        --face-r: #2ecc71;
+        --face-l: #2d6cdf;
+        --face-b: #ff7a30;
         --sticker-border: #111;
         --size: 240px;
       }
@@ -202,11 +208,35 @@
       .move-step {
         padding: 0 2px;
         border-radius: 6px;
+        color: var(--muted);
       }
 
       .move-step.active {
-        color: var(--accent);
         background: rgba(247, 179, 43, 0.18);
+      }
+
+      .move-step.active[data-face="U"] {
+        color: var(--face-u);
+      }
+
+      .move-step.active[data-face="D"] {
+        color: var(--face-d);
+      }
+
+      .move-step.active[data-face="F"] {
+        color: var(--face-f);
+      }
+
+      .move-step.active[data-face="R"] {
+        color: var(--face-r);
+      }
+
+      .move-step.active[data-face="L"] {
+        color: var(--face-l);
+      }
+
+      .move-step.active[data-face="B"] {
+        color: var(--face-b);
       }
 
       .algo-row {
@@ -401,35 +431,35 @@
             <strong>Mouvements rapides</strong>
             <div class="moves" id="move-buttons"></div>
             <div class="algo-row">
-              <button id="sexy-move" class="algo-main" type="button" data-algo="sexy" data-label="Sexy move" data-seq="R U R' U'">Sexy move</button>
+              <button id="sexy-move" class="algo-main" type="button" data-algo="sexy" data-label="🔥 Sexy move" data-seq="R U R' U'">🔥 Sexy move</button>
               <button class="algo-step" type="button" data-algo="sexy">Pas a pas</button>
             </div>
             <div class="algo-row">
-              <button id="left-hat" class="algo-main" type="button" data-algo="left-hat" data-label="Chapeau gauche" data-seq="U R' U' R' F' U F">Chapeau gauche</button>
+              <button id="left-hat" class="algo-main" type="button" data-algo="left-hat" data-label="🧢 Chapeau gauche" data-seq="U' L' U L U F U' F'">🧢 Chapeau gauche</button>
               <button class="algo-step" type="button" data-algo="left-hat">Pas a pas</button>
             </div>
             <div class="algo-row">
-              <button id="right-hat" class="algo-main" type="button" data-algo="right-hat" data-label="Chapeau droite" data-seq="F' U' F R U R U'">Chapeau droite</button>
+              <button id="right-hat" class="algo-main" type="button" data-algo="right-hat" data-label="🎩 Chapeau droite" data-seq="U R U' R' U' F' U F">🎩 Chapeau droite</button>
               <button class="algo-step" type="button" data-algo="right-hat">Pas a pas</button>
             </div>
             <div class="algo-row">
-              <button id="yellow-cross" class="algo-main" type="button" data-algo="yellow-cross" data-label="Croix jaune" data-seq="F R U R' U' F'">Croix jaune</button>
+              <button id="yellow-cross" class="algo-main" type="button" data-algo="yellow-cross" data-label="💛 Croix jaune" data-seq="F R U R' U' F'">💛 Croix jaune</button>
               <button class="algo-step" type="button" data-algo="yellow-cross">Pas a pas</button>
             </div>
             <div class="algo-row">
-              <button id="chair" class="algo-main" type="button" data-algo="chair" data-label="Chaise" data-seq="R U2 R' U' R U' R'">Chaise</button>
+              <button id="chair" class="algo-main" type="button" data-algo="chair" data-label="🪑 Chaise droite" data-seq="R U2 R' U' R U' R'">🪑 Chaise droite</button>
               <button class="algo-step" type="button" data-algo="chair">Pas a pas</button>
             </div>
             <div class="algo-row">
-              <button id="left-chair" class="algo-main" type="button" data-algo="left-chair" data-label="Chaise gauche" data-seq="R U R' U R U2 R'">Chaise gauche</button>
+              <button id="left-chair" class="algo-main" type="button" data-algo="left-chair" data-label="🪑 Chaise gauche" data-seq="L' U2 L U L' U L">🪑 Chaise gauche</button>
               <button class="algo-step" type="button" data-algo="left-chair">Pas a pas</button>
             </div>
             <div class="algo-row">
-              <button id="right-friends" class="algo-main" type="button" data-algo="right-friends" data-label="Amis de droite" data-seq="R U' L' U R' U' L U">Amis de droite</button>
+              <button id="right-friends" class="algo-main" type="button" data-algo="right-friends" data-label="🤝 Amis de droite" data-seq="R U' L' U R' U' L U">🤝 Amis de droite</button>
               <button class="algo-step" type="button" data-algo="right-friends">Pas a pas</button>
             </div>
             <div class="algo-row">
-              <button id="left-friends" class="algo-main" type="button" data-algo="left-friends" data-label="Amis de gauche" data-seq="L' U R U' L U R' U'">Amis de gauche</button>
+              <button id="left-friends" class="algo-main" type="button" data-algo="left-friends" data-label="🤝 Amis de gauche" data-seq="L' U R U' L U R' U'">🤝 Amis de gauche</button>
               <button class="algo-step" type="button" data-algo="left-friends">Pas a pas</button>
             </div>
           </div>
@@ -993,11 +1023,11 @@
 
       const algoSequences = {
         sexy: ["R", "U", "R'", "U'"],
-        "left-hat": ["U", "R'", "U'", "R'", "F'", "U", "F"],
-        "right-hat": ["F'", "U'", "F", "R", "U", "R", "U'"],
+        "left-hat": ["U'", "L'", "U", "L", "U", "F", "U'", "F'"],
+        "right-hat": ["U", "R", "U'", "R'", "U'", "F'", "U", "F"],
         "yellow-cross": ["F", "R", "U", "R'", "U'", "F'"],
         chair: ["R", "U2", "R'", "U'", "R", "U'", "R'"],
-        "left-chair": ["R", "U", "R'", "U", "R", "U2", "R'"],
+        "left-chair": ["L'", "U2", "L", "U", "L'", "U", "L"],
         "right-friends": ["R", "U'", "L'", "U", "R'", "U'", "L", "U"],
         "left-friends": ["L'", "U", "R", "U'", "L", "U", "R'", "U'"],
       };
@@ -1011,7 +1041,10 @@
         const label = button.dataset.label || "";
         const sequence = (button.dataset.seq || "").trim().split(/\s+/).filter(Boolean);
         const seqSpans = sequence
-          .map((move) => `<span class="move-step" data-move="${move}">${move}</span>`)
+          .map((move) => {
+            const face = move[0] || "";
+            return `<span class="move-step" data-move="${move}" data-face="${face}">${move}</span>`;
+          })
           .join(" ");
         button.innerHTML = `<span class="algo-label">${label} · ${seqSpans}</span>`;
         if (button.dataset.algo) {
@@ -1048,6 +1081,10 @@
         clearAlgoHighlight(key);
       }
 
+      function resetAllAlgos() {
+        Object.keys(algoSteps).forEach((key) => resetAlgo(key));
+      }
+
       document.querySelectorAll(".algo-step").forEach((button) => {
         button.addEventListener("click", () => {
           stepAlgo(button.dataset.algo);
@@ -1062,6 +1099,7 @@
 
       document.getElementById("reset").addEventListener("click", () => {
         resetState();
+        resetAllAlgos();
       });
 
       document.getElementById("scramble").addEventListener("click", () => {
