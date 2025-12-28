@@ -211,6 +211,10 @@
         color: var(--muted);
       }
 
+      .notation-lowercase .move-step {
+        font-family: "Georgia", "Times New Roman", serif;
+      }
+
       .move-step.active {
         background: rgba(247, 179, 43, 0.18);
       }
@@ -244,6 +248,16 @@
         grid-template-columns: 1fr auto;
         gap: 8px;
         align-items: stretch;
+      }
+
+      .algo-notation {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .algo-notation button {
+        justify-content: center;
+        padding: 6px 10px;
+        font-size: 13px;
       }
 
       .algo-step {
@@ -430,6 +444,11 @@
           <div class="action-row">
             <strong>Mouvements rapides</strong>
             <div class="moves" id="move-buttons"></div>
+            <div class="segmented algo-notation" id="algo-notation">
+              <button type="button" data-notation="standard" class="active" aria-label="Notation standard">R / R'</button>
+              <button type="button" data-notation="lowercase" aria-label="Notation minuscule">R / r</button>
+              <button type="button" data-notation="arrows" aria-label="Notation fleches">R↑ / R↓</button>
+            </div>
             <div class="algo-row">
               <button id="sexy-move" class="algo-main" type="button" data-algo="sexy" data-label="🔥 Sexy move" data-seq="R U R' U'">🔥 Sexy move</button>
               <button class="algo-step" type="button" data-algo="sexy">Pas a pas</button>
@@ -474,7 +493,7 @@
         F: "#ff3b3b",
         R: "#2ecc71",
         L: "#2d6cdf",
-        B: "#ff7a30",
+        B: "#ff5a1f",
       };
 
       const FACE_NAMES = ["U", "R", "F", "D", "L", "B"];
@@ -1036,6 +1055,7 @@
         return acc;
       }, {});
       const algoSpans = {};
+      let notationMode = "standard";
 
       document.querySelectorAll(".algo-main").forEach((button) => {
         const label = button.dataset.label || "";
@@ -1051,6 +1071,33 @@
           algoSpans[button.dataset.algo] = Array.from(button.querySelectorAll(".move-step"));
         }
       });
+      applyNotation(notationMode);
+
+      function formatMoveDisplay(move, mode) {
+        const base = move[0] || "";
+        const modifier = move[1] || "";
+        if (modifier === "2") return `${base}2`;
+        if (mode === "lowercase") {
+          return modifier === "'" ? base.toLowerCase() : base;
+        }
+        if (mode === "arrows") {
+          if (base === "U") {
+            return modifier === "'" ? `${base}←` : `${base}→`;
+          }
+          return modifier === "'" ? `${base}↓` : `${base}↑`;
+        }
+        return modifier === "'" ? `${base}'` : base;
+      }
+
+      function applyNotation(mode) {
+        notationMode = mode;
+        document.documentElement.classList.toggle("notation-lowercase", mode === "lowercase");
+        Object.values(algoSpans).forEach((spans) => {
+          spans.forEach((span) => {
+            span.textContent = formatMoveDisplay(span.dataset.move || "", mode);
+          });
+        });
+      }
 
       function highlightAlgoStep(key, index) {
         const spans = algoSpans[key];
@@ -1090,6 +1137,17 @@
           stepAlgo(button.dataset.algo);
         });
       });
+
+      const notationEl = document.getElementById("algo-notation");
+      if (notationEl) {
+        notationEl.querySelectorAll("button").forEach((button) => {
+          button.addEventListener("click", () => {
+            notationEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+            button.classList.add("active");
+            applyNotation(button.dataset.notation || "standard");
+          });
+        });
+      }
 
       document.getElementById("apply-sequence").addEventListener("click", () => {
         const input = document.getElementById("sequence-input");
