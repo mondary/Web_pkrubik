@@ -381,10 +381,10 @@
       const COLORS = {
         U: "#f6c445",
         D: "#f4f6fb",
-        F: "#2ecc71",
-        B: "#2d6cdf",
-        L: "#ff7a30",
-        R: "#ff3b3b",
+        F: "#ff3b3b",
+        R: "#2ecc71",
+        L: "#2d6cdf",
+        B: "#ff7a30",
       };
 
       const FACE_NAMES = ["U", "R", "F", "D", "L", "B"];
@@ -665,9 +665,12 @@
         const rightMap = { F: "R", R: "B", B: "L", L: "F" };
         const leftMap = { F: "L", L: "B", B: "R", R: "F" };
         const targetFace = parsed.base === "R" ? rightMap[frontFace] : leftMap[frontFace];
-        const sign = chooseTurnSign(frontFace, targetFace);
+        
+        // chooseTurnSign returns the direction for the requested side
+        const downSign = chooseTurnSign(frontFace, targetFace);
+        const finalSign = downSign;
 
-        return { base: targetFace, turns: parsed.turns * sign };
+        return { base: targetFace, turns: parsed.turns * finalSign };
       }
 
       function updateViewIndicator() {

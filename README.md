@@ -37,7 +37,7 @@ Open http://localhost:5173
 
 ## Project structure
 - `index.html` - all UI, styles, and cube logic
-- `cube-state.html` - debug viewer that logs facelets per move
+- `cube-debug.html` - combined net + layers debug viewer
 
 ## Notes
 - No external build tools or frameworks are used.

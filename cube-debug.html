@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cube State Debug</title>
+    <title>Cube Debug</title>
     <style>
       :root {
         --bg: #0e1014;
@@ -23,7 +23,7 @@
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
-        padding: 24px;
+        padding: 140px 24px 24px;
       }
 
       h1,
@@ -31,10 +31,41 @@
         margin: 0 0 12px 0;
       }
 
+      .fixed-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: var(--panel);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        z-index: 10;
+      }
+
+      .header-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .header-title {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: -0.01em;
+      }
+
       .layout {
         display: grid;
         gap: 16px;
-        grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+      }
+
+      .panels {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
       }
 
       .panel {
@@ -47,9 +78,10 @@
 
       .controls {
         display: grid;
-        grid-template-columns: 1fr auto auto auto;
+        grid-template-columns: minmax(220px, 1fr) auto auto auto auto;
         gap: 8px;
         align-items: center;
+        flex: 1;
       }
 
       input[type="text"],
@@ -95,7 +127,7 @@
       .history {
         display: grid;
         gap: 10px;
-        max-height: 70vh;
+        max-height: 50vh;
         overflow: auto;
       }
 
@@ -111,28 +143,92 @@
         font-weight: 600;
       }
 
+      .history-block {
+        display: grid;
+        gap: 8px;
+      }
+
+      .c {
+        font-weight: 700;
+      }
+
+      .c-Y {
+        color: #f6c445;
+      }
+
+      .c-W {
+        color: #f4f6fb;
+      }
+
+      .c-R {
+        color: #ff3b3b;
+      }
+
+      .c-G {
+        color: #2ecc71;
+      }
+
+      .c-O {
+        color: #ff7a30;
+      }
+
+      .c-B {
+        color: #2d6cdf;
+      }
+
+      .c-empty {
+        color: #495063;
+      }
+
       @media (max-width: 900px) {
-        .layout {
+        .panels {
           grid-template-columns: 1fr;
+        }
+
+        .controls {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        body {
+          padding-top: 200px;
         }
       }
     </style>
   </head>
   <body>
-    <div class="layout">
-      <section class="panel">
-        <h1>Cube state (debug)</h1>
+    <header class="fixed-header">
+      <div class="header-inner">
+        <h1 class="header-title">Cube debug</h1>
         <div class="controls">
-          <input id="sequence" type="text" placeholder="R U R' U'" />
+          <input id="sequence" type="text" value="R U R U" />
+          <select id="view-select">
+            <option value="list">List (U R F D L B)</option>
+            <option value="net-classic" selected>Net (B U / L F R / D)</option>
+            <option value="net-front">U top, B bottom (U / L F R / D / B)</option>
+          </select>
           <button id="apply">Apply</button>
           <button id="reset">Reset</button>
           <button id="snapshot">Snapshot</button>
         </div>
-        <div class="legend">
-          Codes: U=Y, D=W, F=R, B=G, L=O, R=B
-        </div>
-        <pre id="state"></pre>
-      </section>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="legend">
+        Codes: U=Y, D=W, F=R, R=G, L=B, B=O
+      </div>
+
+      <div class="panels">
+        <section class="panel">
+          <h2>Net view</h2>
+          <pre id="state-net"></pre>
+        </section>
+
+        <section class="panel">
+          <h2>Layers</h2>
+          <pre id="state-layers"></pre>
+        </section>
+      </div>
 
       <section class="panel">
         <h2>History</h2>
@@ -145,9 +241,9 @@
         U: "Y",
         D: "W",
         F: "R",
-        B: "G",
-        L: "O",
-        R: "B",
+        R: "G",
+        L: "B",
+        B: "O",
       };
 
       const FACE_NAMES = ["U", "R", "F", "D", "L", "B"];
@@ -158,8 +254,10 @@
       let stickers = [];
       let step = 0;
 
-      const stateEl = document.getElementById("state");
+      const netEl = document.getElementById("state-net");
+      const layersEl = document.getElementById("state-layers");
       const historyEl = document.getElementById("history");
+      const viewSelectEl = document.getElementById("view-select");
 
       function buildCoords() {
         coords = Array.from({ length: size }, (_, i) => i - (size - 1) / 2);
@@ -333,30 +431,143 @@
         return colors;
       }
 
-      function formatFace(face, colors) {
+      function faceLines(face, colors) {
         const lines = [];
         for (let row = 0; row < size; row += 1) {
           const start = row * size;
-          const line = colors[face].slice(start, start + size).join(" ");
-          lines.push(line);
+          lines.push(colors[face].slice(start, start + size));
         }
-        return `${face}\n${lines.join("\n")}`;
+        return lines;
       }
 
-      function formatState() {
-        const colors = faceColors();
+      function blankLines(faceWidth) {
+        return Array(size).fill(" ".repeat(faceWidth));
+      }
+
+      function mergeRow(rows, spacer) {
+        return rows[0].map((_, index) => rows.map((row) => row[index]).join(spacer));
+      }
+
+      function formatCell(code) {
+        if (code === ".") {
+          return `<span class="c c-empty">.</span>`;
+        }
+        return `<span class="c c-${code}">${code}</span>`;
+      }
+
+      function formatRow(row) {
+        return row.map(formatCell).join(" ");
+      }
+
+      function formatList(colors) {
+        const formatFaceHtml = (face) => {
+          const rows = faceLines(face, colors).map(formatRow).join("\n");
+          return `${face}\n${rows}`;
+        };
         return [
-          formatFace("U", colors),
-          formatFace("R", colors),
-          formatFace("F", colors),
-          formatFace("D", colors),
-          formatFace("L", colors),
-          formatFace("B", colors),
+          formatFaceHtml("U"),
+          formatFaceHtml("R"),
+          formatFaceHtml("F"),
+          formatFaceHtml("D"),
+          formatFaceHtml("L"),
+          formatFaceHtml("B"),
         ].join("\n\n");
       }
 
-      function renderState() {
-        stateEl.textContent = formatState();
+      function formatNetClassic(colors) {
+        const faceWidth = size * 2 - 1;
+        const spacer = "   ";
+        const U = faceLines("U", colors).map(formatRow);
+        const D = faceLines("D", colors).map(formatRow);
+        const L = faceLines("L", colors).map(formatRow);
+        const F = faceLines("F", colors).map(formatRow);
+        const R = faceLines("R", colors).map(formatRow);
+        const B = faceLines("B", colors).map(formatRow);
+        const blank = blankLines(faceWidth);
+
+        return [
+          ...mergeRow([B, U, blank], spacer),
+          ...mergeRow([L, F, R], spacer),
+          ...mergeRow([blank, D, blank], spacer),
+        ].join("\n");
+      }
+
+      function formatNetFront(colors) {
+        const faceWidth = size * 2 - 1;
+        const spacer = "   ";
+        const U = faceLines("U", colors).map(formatRow);
+        const D = faceLines("D", colors).map(formatRow);
+        const L = faceLines("L", colors).map(formatRow);
+        const F = faceLines("F", colors).map(formatRow);
+        const R = faceLines("R", colors).map(formatRow);
+        const B = faceLines("B", colors).map(formatRow);
+        const blank = blankLines(faceWidth);
+
+        return [
+          ...mergeRow([blank, U, blank], spacer),
+          ...mergeRow([L, F, R], spacer),
+          ...mergeRow([blank, D, blank], spacer),
+          ...mergeRow([blank, B, blank], spacer),
+        ].join("\n");
+      }
+
+      function layerRowIndex(y) {
+        return size - 1 - coords.indexOf(y);
+      }
+
+      function formatLayer(y, colors) {
+        const rowIndex = layerRowIndex(y);
+        const grids = {
+          F: faceLines("F", colors),
+          R: faceLines("R", colors),
+          B: faceLines("B", colors),
+          L: faceLines("L", colors),
+          U: faceLines("U", colors),
+          D: faceLines("D", colors),
+        };
+
+        const ring = ["F", "R", "B", "L"].map((face) => {
+          return `${face}: ${formatRow(grids[face][rowIndex])}`;
+        });
+
+        const parts = [];
+        if (y === minCoord) {
+          parts.push("D:");
+          grids.D.forEach((row) => parts.push(formatRow(row)));
+          parts.push("");
+        }
+
+        parts.push(`Ring (row ${rowIndex + 1}):`);
+        parts.push(ring.join(" | "));
+
+        if (y === maxCoord) {
+          parts.push("");
+          parts.push("U:");
+          grids.U.forEach((row) => parts.push(formatRow(row)));
+        }
+
+        return parts.join("\n");
+      }
+
+      function formatLayers(colors) {
+        const layers = coords.map((y) => {
+          const name = y === minCoord ? "Layer 1 (bottom)" : y === maxCoord ? `Layer ${size} (top)` : `Layer ${coords.indexOf(y) + 1}`;
+          return `${name}\n${formatLayer(y, colors)}`;
+        });
+        return layers.join("\n\n---\n\n");
+      }
+
+      function formatNet(colors) {
+        const view = viewSelectEl.value;
+        if (view === "net-classic") return formatNetClassic(colors);
+        if (view === "net-front") return formatNetFront(colors);
+        return formatList(colors);
+      }
+
+      function renderViews() {
+        const colors = faceColors();
+        netEl.innerHTML = formatNet(colors);
+        layersEl.innerHTML = formatLayers(colors);
       }
 
       function logState(label) {
@@ -364,10 +575,25 @@
         entry.open = false;
         const summary = document.createElement("summary");
         summary.textContent = label;
-        const pre = document.createElement("pre");
-        pre.textContent = formatState();
+        const wrapper = document.createElement("div");
+        wrapper.className = "history-block";
+
+        const netTitle = document.createElement("div");
+        netTitle.textContent = "Net view";
+        const netPre = document.createElement("pre");
+        netPre.innerHTML = formatNet(faceColors());
+
+        const layerTitle = document.createElement("div");
+        layerTitle.textContent = "Layers";
+        const layerPre = document.createElement("pre");
+        layerPre.innerHTML = formatLayers(faceColors());
+
+        wrapper.appendChild(netTitle);
+        wrapper.appendChild(netPre);
+        wrapper.appendChild(layerTitle);
+        wrapper.appendChild(layerPre);
         entry.appendChild(summary);
-        entry.appendChild(pre);
+        entry.appendChild(wrapper);
         historyEl.prepend(entry);
       }
 
@@ -376,7 +602,7 @@
         stickers = createSolvedStickers();
         step = 0;
         historyEl.innerHTML = "";
-        renderState();
+        renderViews();
       }
 
       document.getElementById("apply").addEventListener("click", () => {
@@ -388,7 +614,7 @@
           step += 1;
           logState(`Step ${step}: ${move}`);
         });
-        renderState();
+        renderViews();
       });
 
       document.getElementById("reset").addEventListener("click", () => {
@@ -398,6 +624,10 @@
       document.getElementById("snapshot").addEventListener("click", () => {
         step += 1;
         logState(`Step ${step}: snapshot`);
+      });
+
+      viewSelectEl.addEventListener("change", () => {
+        renderViews();
       });
 
       resetCube();
