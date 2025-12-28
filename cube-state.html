@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cube State Debug</title>
+    <style>
+      :root {
+        --bg: #0e1014;
+        --panel: #151922;
+        --text: #f4f6fb;
+        --muted: #b9c0d1;
+        --accent: #f7b32b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 12px 0;
+      }
+
+      .layout {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+      }
+
+      .panel {
+        background: var(--panel);
+        border-radius: 16px;
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      input[type="text"],
+      select {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #0f1320;
+        color: var(--text);
+      }
+
+      button {
+        border: none;
+        background: #222a3a;
+        color: var(--text);
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      button:hover {
+        background: #2b3550;
+      }
+
+      pre {
+        background: #0f1320;
+        padding: 12px;
+        border-radius: 12px;
+        color: var(--text);
+        margin: 0;
+        white-space: pre;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 13px;
+      }
+
+      .legend {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .history {
+        display: grid;
+        gap: 10px;
+        max-height: 70vh;
+        overflow: auto;
+      }
+
+      details {
+        background: #0f1320;
+        padding: 8px;
+        border-radius: 10px;
+      }
+
+      summary {
+        cursor: pointer;
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <section class="panel">
+        <h1>Cube state (debug)</h1>
+        <div class="controls">
+          <input id="sequence" type="text" placeholder="R U R' U'" />
+          <button id="apply">Apply</button>
+          <button id="reset">Reset</button>
+          <button id="snapshot">Snapshot</button>
+        </div>
+        <div class="legend">
+          Codes: U=Y, D=W, F=R, B=G, L=O, R=B
+        </div>
+        <pre id="state"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>History</h2>
+        <div id="history" class="history"></div>
+      </section>
+    </div>
+
+    <script>
+      const FACE_CODE = {
+        U: "Y",
+        D: "W",
+        F: "R",
+        B: "G",
+        L: "O",
+        R: "B",
+      };
+
+      const FACE_NAMES = ["U", "R", "F", "D", "L", "B"];
+      let size = 3;
+      let coords = [];
+      let maxCoord = 1;
+      let minCoord = -1;
+      let stickers = [];
+      let step = 0;
+
+      const stateEl = document.getElementById("state");
+      const historyEl = document.getElementById("history");
+
+      function buildCoords() {
+        coords = Array.from({ length: size }, (_, i) => i - (size - 1) / 2);
+        maxCoord = coords[coords.length - 1];
+        minCoord = coords[0];
+      }
+
+      function createSolvedStickers() {
+        const result = [];
+        const add = (x, y, z, nx, ny, nz, face) => {
+          result.push({
+            pos: { x, y, z },
+            normal: { x: nx, y: ny, z: nz },
+            color: FACE_CODE[face],
+          });
+        };
+
+        coords.forEach((x) => {
+          coords.forEach((z) => {
+            add(x, maxCoord, z, 0, 1, 0, "U");
+            add(x, minCoord, z, 0, -1, 0, "D");
+          });
+        });
+
+        coords.forEach((x) => {
+          coords.forEach((y) => {
+            add(x, y, maxCoord, 0, 0, 1, "F");
+            add(x, y, minCoord, 0, 0, -1, "B");
+          });
+        });
+
+        coords.forEach((z) => {
+          coords.forEach((y) => {
+            add(maxCoord, y, z, 1, 0, 0, "R");
+            add(minCoord, y, z, -1, 0, 0, "L");
+          });
+        });
+
+        return result;
+      }
+
+      function rotate90({ x, y, z }, axis, direction) {
+        if (axis === "x") {
+          return direction > 0
+            ? { x, y: -z, z: y }
+            : { x, y: z, z: -y };
+        }
+        if (axis === "y") {
+          return direction > 0
+            ? { x: z, y, z: -x }
+            : { x: -z, y, z: x };
+        }
+        return direction > 0
+          ? { x: -y, y: x, z }
+          : { x: y, y: -x, z };
+      }
+
+      function isLayer(pos, axis, layerValue) {
+        return Math.abs(pos[axis] - layerValue) < 1e-6;
+      }
+
+      function rotateLayer(axis, layerValue, turns) {
+        const direction = turns > 0 ? 1 : -1;
+        const steps = Math.abs(turns);
+
+        for (let stepIdx = 0; stepIdx < steps; stepIdx += 1) {
+          stickers = stickers.map((sticker) => {
+            if (!isLayer(sticker.pos, axis, layerValue)) {
+              return sticker;
+            }
+
+            const newPos = rotate90(sticker.pos, axis, direction);
+            const newNormal = rotate90(sticker.normal, axis, direction);
+            return {
+              ...sticker,
+              pos: newPos,
+              normal: newNormal,
+            };
+          });
+        }
+      }
+
+      function applyMove(move) {
+        const base = move[0];
+        const modifier = move[1] || "";
+        let turns = 1;
+        if (modifier === "2") turns = 2;
+        if (modifier === "'") turns = -1;
+
+        switch (base) {
+          case "U":
+            rotateLayer("y", maxCoord, -turns);
+            break;
+          case "D":
+            rotateLayer("y", minCoord, turns);
+            break;
+          case "R":
+            rotateLayer("x", maxCoord, -turns);
+            break;
+          case "L":
+            rotateLayer("x", minCoord, turns);
+            break;
+          case "F":
+            rotateLayer("z", maxCoord, -turns);
+            break;
+          case "B":
+            rotateLayer("z", minCoord, turns);
+            break;
+          default:
+            break;
+        }
+      }
+
+      function parseSequence(sequence) {
+        return sequence
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .flatMap((token) => {
+            const match = token.match(/^([URFDLB])([2']?)$/);
+            return match ? [match[1] + match[2]] : [];
+          });
+      }
+
+      function getFaceIndex(face, pos) {
+        const { x, y, z } = pos;
+        const idx = (value) => coords.indexOf(value);
+
+        if (face === "U") {
+          return idx(z) * size + idx(x);
+        }
+        if (face === "D") {
+          return (size - 1 - idx(z)) * size + idx(x);
+        }
+        if (face === "F") {
+          return (size - 1 - idx(y)) * size + idx(x);
+        }
+        if (face === "B") {
+          return (size - 1 - idx(y)) * size + (size - 1 - idx(x));
+        }
+        if (face === "R") {
+          return (size - 1 - idx(y)) * size + (size - 1 - idx(z));
+        }
+        return (size - 1 - idx(y)) * size + idx(z);
+      }
+
+      function faceColors() {
+        const colors = {
+          U: Array(size * size).fill("."),
+          D: Array(size * size).fill("."),
+          F: Array(size * size).fill("."),
+          B: Array(size * size).fill("."),
+          L: Array(size * size).fill("."),
+          R: Array(size * size).fill("."),
+        };
+
+        stickers.forEach((sticker) => {
+          const n = sticker.normal;
+          let face = "F";
+          if (n.y === 1) face = "U";
+          else if (n.y === -1) face = "D";
+          else if (n.z === 1) face = "F";
+          else if (n.z === -1) face = "B";
+          else if (n.x === 1) face = "R";
+          else if (n.x === -1) face = "L";
+
+          const index = getFaceIndex(face, sticker.pos);
+          colors[face][index] = sticker.color;
+        });
+
+        return colors;
+      }
+
+      function formatFace(face, colors) {
+        const lines = [];
+        for (let row = 0; row < size; row += 1) {
+          const start = row * size;
+          const line = colors[face].slice(start, start + size).join(" ");
+          lines.push(line);
+        }
+        return `${face}\n${lines.join("\n")}`;
+      }
+
+      function formatState() {
+        const colors = faceColors();
+        return [
+          formatFace("U", colors),
+          formatFace("R", colors),
+          formatFace("F", colors),
+          formatFace("D", colors),
+          formatFace("L", colors),
+          formatFace("B", colors),
+        ].join("\n\n");
+      }
+
+      function renderState() {
+        stateEl.textContent = formatState();
+      }
+
+      function logState(label) {
+        const entry = document.createElement("details");
+        entry.open = false;
+        const summary = document.createElement("summary");
+        summary.textContent = label;
+        const pre = document.createElement("pre");
+        pre.textContent = formatState();
+        entry.appendChild(summary);
+        entry.appendChild(pre);
+        historyEl.prepend(entry);
+      }
+
+      function resetCube() {
+        buildCoords();
+        stickers = createSolvedStickers();
+        step = 0;
+        historyEl.innerHTML = "";
+        renderState();
+      }
+
+      document.getElementById("apply").addEventListener("click", () => {
+        const input = document.getElementById("sequence");
+        const moves = parseSequence(input.value);
+        if (!moves.length) return;
+        moves.forEach((move) => {
+          applyMove(move);
+          step += 1;
+          logState(`Step ${step}: ${move}`);
+        });
+        renderState();
+      });
+
+      document.getElementById("reset").addEventListener("click", () => {
+        resetCube();
+      });
+
+      document.getElementById("snapshot").addEventListener("click", () => {
+        step += 1;
+        logState(`Step ${step}: snapshot`);
+      });
+
+      resetCube();
+    </script>
+  </body>
+</html>
