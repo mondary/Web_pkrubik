@@ -112,6 +112,7 @@
         border-radius: 18px;
         border: 1px solid rgba(255, 255, 255, 0.08);
         backface-visibility: hidden;
+        overflow: visible;
       }
 
       .sticker {
@@ -119,6 +120,23 @@
         border: 2px solid var(--sticker-border);
         box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.35);
         transition: background-color 0.15s ease-out;
+      }
+
+      .move-indicator {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: rgba(15, 19, 32, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #f4f6fb;
+        pointer-events: none;
       }
 
       .panel {
@@ -225,6 +243,7 @@
         border-radius: 10px;
         justify-content: center;
         font-size: 16px;
+        color: #f4f6fb;
       }
 
       .notation-row {
@@ -334,11 +353,7 @@
                <button type="button" data-speed="180" aria-label="Rapide">⚡</button>
              </div>
              <div class="icon-actions">
-               <button type="button" id="reset" aria-label="Reinitialiser">
-                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
-                   <path d="M88 256L232 256C241.7 256 250.5 250.2 254.2 241.2C257.9 232.2 255.9 221.9 249 215L202.3 168.3C277.6 109.7 386.6 115 455.8 184.2C530.8 259.2 530.8 380.7 455.8 455.7C380.8 530.7 259.3 530.7 184.3 455.7C174.1 445.5 165.3 434.4 157.9 422.7C148.4 407.8 128.6 403.4 113.7 412.9C98.8 422.4 94.4 442.2 103.9 457.1C113.7 472.7 125.4 487.5 139 501C239 601 401 601 501 501C601 401 601 239 501 139C406.8 44.7 257.3 39.3 156.7 122.8L105 71C98.1 64.2 87.8 62.1 78.8 65.8C69.8 69.5 64 78.3 64 88L64 232C64 245.3 74.7 256 88 256z"/>
-                 </svg>
-               </button>
+               <button type="button" id="reset" aria-label="Reinitialiser"><i class="fa-solid fa-rotate-left"></i></button>
                <button type="button" id="scramble" aria-label="Melanger"><i class="fa-solid fa-shuffle"></i></button>
              </div>
            </div>
@@ -373,6 +388,14 @@
       };
 
       const FACE_NAMES = ["U", "R", "F", "D", "L", "B"];
+      const normalMap = {
+        U: { x: 0, y: 1, z: 0 },
+        D: { x: 0, y: -1, z: 0 },
+        F: { x: 0, y: 0, z: 1 },
+        B: { x: 0, y: 0, z: -1 },
+        R: { x: 1, y: 0, z: 0 },
+        L: { x: -1, y: 0, z: 0 },
+      };
       const TWISTED_SEQUENCE = "R U R' U' R' F R2 U' R' U' R U R' F'";
 
       const cubeEl = document.getElementById("cube");
@@ -391,6 +414,7 @@
       let stickers = [];
       let moveCount = 0;
       let moveChain = Promise.resolve();
+      let moveIndicatorEl = null;
 
       const faceTransforms = {
         F: "rotateY(0deg) translateZ(calc(var(--size) / 2))",
@@ -415,7 +439,10 @@
          if (moveCountEl) {
            moveCountEl.textContent = moveCount;
          }
-         document.getElementById("moves-overlay").textContent = `Mouvements: ${moveCount}`;
+         const movesOverlay = document.getElementById("moves-overlay");
+         if (movesOverlay) {
+           movesOverlay.textContent = `Mouvements: ${moveCount}`;
+         }
        }
 
        function resetMoveCount() {
@@ -423,7 +450,10 @@
          if (moveCountEl) {
            moveCountEl.textContent = 0;
          }
-         document.getElementById("moves-overlay").textContent = `Mouvements: 0`;
+         const movesOverlay = document.getElementById("moves-overlay");
+         if (movesOverlay) {
+           movesOverlay.textContent = `Mouvements: 0`;
+         }
        }
 
       function buildCube(size) {
@@ -457,6 +487,12 @@
             stickersByFace[face].push(sticker);
           }
         });
+
+        if (!moveIndicatorEl) {
+          moveIndicatorEl = document.createElement("div");
+          moveIndicatorEl.className = "move-indicator";
+          moveIndicatorEl.textContent = "R";
+        }
       }
 
       function createSolvedStickers() {
@@ -514,6 +550,138 @@
         return Math.abs(pos[axis] - layerValue) < 1e-6;
       }
 
+      function degToRad(value) {
+        return (value * Math.PI) / 180;
+      }
+
+      function rotateVecByView(vec) {
+        const rx = degToRad(rotX);
+        const ry = degToRad(rotY);
+        const cosX = Math.cos(rx);
+        const sinX = Math.sin(rx);
+        const cosY = Math.cos(ry);
+        const sinY = Math.sin(ry);
+
+        const x1 = vec.x;
+        const y1 = vec.y * cosX - vec.z * sinX;
+        const z1 = vec.y * sinX + vec.z * cosX;
+
+        const x2 = x1 * cosY + z1 * sinY;
+        const y2 = y1;
+        const z2 = -x1 * sinY + z1 * cosY;
+
+        return { x: x2, y: y2, z: z2 };
+      }
+
+      function bestAxisFor(component) {
+        const candidates = [
+          { axis: "x", vec: { x: 1, y: 0, z: 0 }, pos: "R", neg: "L" },
+          { axis: "y", vec: { x: 0, y: 1, z: 0 }, pos: "U", neg: "D" },
+          { axis: "z", vec: { x: 0, y: 0, z: 1 }, pos: "F", neg: "B" },
+        ];
+
+        let best = null;
+        let bestAbs = -Infinity;
+        candidates.forEach((cand) => {
+          const rotated = rotateVecByView(cand.vec);
+          const value = rotated[component];
+          const abs = Math.abs(value);
+          if (abs > bestAbs) {
+            bestAbs = abs;
+            best = { ...cand, sign: Math.sign(value) || 1 };
+          }
+        });
+        return best;
+      }
+
+      function getViewMapping() {
+        return {
+          right: bestAxisFor("x"),
+          up: bestAxisFor("y"),
+          front: bestAxisFor("z"),
+        };
+      }
+
+      function getFrontFace() {
+        const candidates = ["F", "R", "B", "L"];
+        let bestFace = "F";
+        let bestZ = -Infinity;
+        candidates.forEach((face) => {
+          const normal = normalMap[face];
+          const viewNormal = rotateVecByView(normal);
+          if (viewNormal.z > bestZ) {
+            bestZ = viewNormal.z;
+            bestFace = face;
+          }
+        });
+        return bestFace;
+      }
+
+      function axisForFace(face) {
+        if (face === "U") return { axis: "y", layer: maxCoord };
+        if (face === "D") return { axis: "y", layer: minCoord };
+        if (face === "R") return { axis: "x", layer: maxCoord };
+        if (face === "L") return { axis: "x", layer: minCoord };
+        if (face === "F") return { axis: "z", layer: maxCoord };
+        return { axis: "z", layer: minCoord };
+      }
+
+      function testPointFor(frontFace, sideFace) {
+        const point = { x: 0, y: maxCoord, z: 0 };
+        const frontAxis = axisForFace(frontFace);
+        const sideAxis = axisForFace(sideFace);
+        point[frontAxis.axis] = frontAxis.layer;
+        point[sideAxis.axis] = sideAxis.layer;
+        return point;
+      }
+
+      function chooseTurnSign(frontFace, sideFace) {
+        const { axis, layer } = axisForFace(sideFace);
+        const point = testPointFor(frontFace, sideFace);
+        const plus = rotate90(point, axis, 1);
+        const minus = rotate90(point, axis, -1);
+        const yPlus = rotateVecByView(plus).y;
+        const yMinus = rotateVecByView(minus).y;
+        return yPlus >= yMinus ? 1 : -1;
+      }
+
+      function parseMove(move) {
+        if (typeof move === "object" && move && move.base) {
+          return move;
+        }
+        const base = move[0];
+        const modifier = move[1] || "";
+        let turns = 1;
+        if (modifier === "2") turns = 2;
+        if (modifier === "'") turns = -1;
+        return { base, turns };
+      }
+
+      function resolveViewMove(move) {
+        const parsed = parseMove(move);
+        if (parsed.base !== "R" && parsed.base !== "L") return parsed;
+
+        const frontFace = getFrontFace();
+        const rightMap = { F: "R", R: "B", B: "L", L: "F" };
+        const leftMap = { F: "L", L: "B", B: "R", R: "F" };
+        const targetFace = parsed.base === "R" ? rightMap[frontFace] : leftMap[frontFace];
+        const sign = chooseTurnSign(frontFace, targetFace);
+
+        return { base: targetFace, turns: parsed.turns * sign };
+      }
+
+      function updateViewIndicator() {
+        if (!moveIndicatorEl) return;
+        const view = getViewMapping();
+        const face = view.front.sign > 0 ? view.front.pos : view.front.neg;
+        const faceEl = faces[face];
+        if (!faceEl) return;
+        if (moveIndicatorEl.parentElement !== faceEl) {
+          moveIndicatorEl.remove();
+          faceEl.appendChild(moveIndicatorEl);
+        }
+      }
+
       function rotateLayer(axis, layerValue, turns) {
         const direction = turns > 0 ? 1 : -1;
         const steps = Math.abs(turns);
@@ -536,15 +704,8 @@
       }
 
       function applyMoveState(move) {
-        const base = move[0];
-        const modifier = move[1] || "";
-
-        let turns = 1;
-        if (modifier === "2") {
-          turns = 2;
-        } else if (modifier === "'") {
-          turns = -1;
-        }
+        const resolved = resolveViewMove(move);
+        const { base, turns } = resolved;
 
         switch (base) {
           case "U":
@@ -657,16 +818,17 @@
 
       function enqueueMove(move) {
         moveChain = moveChain.then(async () => {
-          const base = move[0];
-          const modifier = move[1] || "";
-          let turns = 1;
-          if (modifier === "2") turns = 2;
-          if (modifier === "'") turns = -1;
+          try {
+            const resolved = resolveViewMove(move);
+            const { base, turns } = resolved;
 
-          await animateFace(base, turns);
-          const delta = applyMoveState(move);
-          updateMoveCount(delta);
-          render();
+            await animateFace(base, turns);
+            const delta = applyMoveState(move);
+            updateMoveCount(delta);
+            render();
+          } catch (e) {
+            console.error("Erreur lors du mouvement :", e);
+          }
         });
       }
 
@@ -811,24 +973,30 @@
       buildCube(cubeSize);
       resetState();
 
-      speedSegmentEl.querySelectorAll("button").forEach((button) => {
-        button.addEventListener("click", () => {
-          speedSegmentEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
-          button.classList.add("active");
-          speedEl.value = button.dataset.speed;
+      if (speedSegmentEl) {
+        speedSegmentEl.querySelectorAll("button").forEach((button) => {
+          button.addEventListener("click", () => {
+            speedSegmentEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+            button.classList.add("active");
+            speedEl.value = button.dataset.speed;
+          });
         });
-      });
+      }
 
       const viewport = document.getElementById("viewport");
       let isDragging = false;
       let lastX = 0;
       let lastY = 0;
        let rotX = -15;
-       let rotY = 70;
+       let rotY = -15;
 
        function updateCubeRotation() {
          cubeEl.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-         document.getElementById("coords-overlay").textContent = `rotX: ${Math.round(rotX)}, rotY: ${Math.round(rotY)}`;
+         const coordsOverlay = document.getElementById("coords-overlay");
+         if (coordsOverlay) {
+           coordsOverlay.textContent = `rotX: ${Math.round(rotX)}, rotY: ${Math.round(rotY)}`;
+         }
+         updateViewIndicator();
        }
 
       viewport.addEventListener("pointerdown", (event) => {
