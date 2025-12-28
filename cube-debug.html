@@ -135,6 +135,15 @@
         overflow: auto;
       }
 
+      .history-row {
+        overflow-x: auto;
+      }
+
+      .history-label {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
       details {
         background: #0f1320;
         padding: 8px;
@@ -145,11 +154,6 @@
         cursor: pointer;
         color: var(--accent);
         font-weight: 600;
-      }
-
-      .history-block {
-        display: grid;
-        gap: 8px;
       }
 
       .c {
@@ -188,7 +192,12 @@
       }
 
       .c-label {
-        color: var(--text);
+        color: var(--muted);
+      }
+
+      .csv-label {
+        color: var(--muted);
+        font-weight: 600;
       }
 
       @media (max-width: 900px) {
@@ -219,6 +228,12 @@
     </header>
 
     <div class="layout">
+      <section class="panel">
+        <h2>CSV view</h2>
+        <pre id="state-csv" class="csv-line"></pre>
+        <div class="legend">Layer code</div>
+        <pre id="state-layercode" class="csv-line"></pre>
+      </section>
 
       <div class="panels">
         <section class="panel">
@@ -234,11 +249,6 @@
         <section class="panel">
           <h2>Layers</h2>
           <pre id="state-layers"></pre>
-        </section>
-
-        <section class="panel">
-          <h2>CSV view</h2>
-          <pre id="state-csv" class="csv-line"></pre>
         </section>
       </div>
 
@@ -258,7 +268,7 @@
         B: "O",
       };
 
-      const FACE_NAMES = ["U", "R", "F", "D", "L", "B"];
+      const FACE_NAMES = ["U", "L", "F", "R", "D", "B"];
       let size = 3;
       let coords = [];
       let maxCoord = 1;
@@ -270,6 +280,7 @@
       const netEl = document.getElementById("state-net");
       const layersEl = document.getElementById("state-layers");
       const csvEl = document.getElementById("state-csv");
+      const layerCodeEl = document.getElementById("state-layercode");
       const historyEl = document.getElementById("history");
 
       function buildCoords() {
@@ -476,6 +487,25 @@
         return row.map(formatCell).join("");
       }
 
+      const FACE_ORDER = [
+        { face: "U", label: "Up" },
+        { face: "L", label: "Le" },
+        { face: "F", label: "Fr" },
+        { face: "R", label: "Ri" },
+        { face: "D", label: "Do" },
+        { face: "B", label: "Ba" },
+      ];
+
+      function formatLayerCode(colors) {
+        return FACE_ORDER.map(({ face, label }) => {
+          const name = `<span class="csv-label">${label}</span>`;
+          const rows = faceLines(face, colors)
+            .map((row) => formatCompactRow(row))
+            .join(".");
+          return `${name}:${rows}`;
+        }).join(",");
+      }
+
       function formatLabelRow(label) {
         const cells = Array(size).fill("&nbsp;");
         cells[Math.floor(size / 2)] = label;
@@ -485,7 +515,7 @@
       }
 
       function formatList(colors) {
-        const faces = ["U", "R", "F", "D", "L", "B"].map((face) => ({
+        const faces = ["U", "L", "F", "R", "D", "B"].map((face) => ({
           face,
           rows: faceLines(face, colors).map(formatRow),
         }));
@@ -500,14 +530,11 @@
       }
 
       function formatCsv(colors) {
-        const order = ["U", "R", "F", "D", "L", "B"];
-        return order
-          .map((face) => {
-            const label = `<span class="c c-label">${face}</span>`;
-            const values = colors[face].map(formatCell).join("");
-            return `${label},${values}`;
-          })
-          .join(",");
+        return FACE_ORDER.map(({ face, label }) => {
+          const name = `<span class="csv-label">${label}</span>`;
+          const values = colors[face].map(formatCell).join("");
+          return `${name}:${values}`;
+        }).join(",");
       }
 
       function formatNetClassic(colors) {
@@ -544,11 +571,11 @@
           D: faceLines("D", colors),
         };
 
-        const ring = ["F", "R", "B", "L"].map((face) => {
+        const ring = ["L", "F", "R", "B"].map((face) => {
           return `${face}: ${formatRow(grids[face][rowIndex])}`;
         });
 
-        return [`(row ${rowNumber}):`, ring.join(" | ")].join("\n");
+        return `(row ${rowNumber}) ${ring.join(" | ")}`;
       }
 
       function formatLayers(colors) {
@@ -572,64 +599,26 @@
         netEl.innerHTML = formatNetClassic(colors);
         layersEl.innerHTML = formatLayers(colors);
         csvEl.innerHTML = formatCsv(colors);
+        layerCodeEl.innerHTML = formatLayerCode(colors);
         requestAnimationFrame(syncViewHeights);
       }
 
       function syncViewHeights() {
         const targetHeight = netEl.offsetHeight;
         if (!targetHeight) return;
-        [listEl, csvEl].forEach((el) => {
-          if (el) el.style.minHeight = `${targetHeight}px`;
-        });
+        if (listEl) listEl.style.minHeight = `${targetHeight}px`;
       }
 
       function logState(label) {
-        const entry = document.createElement("details");
-        entry.open = false;
-        const summary = document.createElement("summary");
-        summary.textContent = label;
-        const wrapper = document.createElement("div");
-        wrapper.className = "history-block";
-
-        const netTitle = document.createElement("div");
-        netTitle.textContent = "Net view";
-        const netPre = document.createElement("pre");
-        netPre.innerHTML = formatNetClassic(faceColors());
-
-        const layerTitle = document.createElement("div");
-        layerTitle.textContent = "Layers";
-        const layerPre = document.createElement("pre");
-        layerPre.innerHTML = formatLayers(faceColors());
-
-        const listTitle = document.createElement("div");
-        listTitle.textContent = "List view";
-        const listPre = document.createElement("pre");
-        listPre.innerHTML = formatList(faceColors());
-
-        const csvTitle = document.createElement("div");
-        csvTitle.textContent = "CSV view";
-        const csvPre = document.createElement("pre");
-        csvPre.className = "csv-line";
-        csvPre.innerHTML = formatCsv(faceColors());
-
-        wrapper.appendChild(netTitle);
-        wrapper.appendChild(netPre);
-        wrapper.appendChild(layerTitle);
-        wrapper.appendChild(layerPre);
-        wrapper.appendChild(listTitle);
-        wrapper.appendChild(listPre);
-        wrapper.appendChild(csvTitle);
-        wrapper.appendChild(csvPre);
-        entry.appendChild(summary);
-        entry.appendChild(wrapper);
-        historyEl.prepend(entry);
-        requestAnimationFrame(() => {
-          const targetHeight = netPre.offsetHeight;
-          if (!targetHeight) return;
-          [listPre, csvPre].forEach((el) => {
-            el.style.minHeight = `${targetHeight}px`;
-          });
-        });
+        const row = document.createElement("pre");
+        row.className = "history-row csv-line";
+        const title = document.createElement("span");
+        title.className = "history-label";
+        title.textContent = label;
+        row.appendChild(title);
+        row.append(" | ");
+        row.insertAdjacentHTML("beforeend", formatCsv(faceColors()));
+        historyEl.prepend(row);
       }
 
       function resetCube() {
@@ -637,6 +626,7 @@
         stickers = createSolvedStickers();
         step = 0;
         historyEl.innerHTML = "";
+        logState("Step 0: reset");
         renderViews();
       }
 
