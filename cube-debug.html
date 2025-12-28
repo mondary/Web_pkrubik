@@ -128,6 +128,11 @@
         font-size: 13px;
       }
 
+      .mapping-table {
+        display: grid;
+        gap: 6px;
+      }
+
       .history {
         display: grid;
         gap: 10px;
@@ -235,6 +240,11 @@
         <pre id="state-layercode" class="csv-line"></pre>
       </section>
 
+      <section class="panel">
+        <h2>Isometric ASCII</h2>
+        <pre id="state-iso"></pre>
+      </section>
+
       <div class="panels">
         <section class="panel">
           <h2>List view</h2>
@@ -249,6 +259,11 @@
         <section class="panel">
           <h2>Layers</h2>
           <pre id="state-layers"></pre>
+        </section>
+
+        <section class="panel">
+          <h2>View-relative mapping</h2>
+          <pre id="state-mapping" class="csv-line"></pre>
         </section>
       </div>
 
@@ -281,6 +296,8 @@
       const layersEl = document.getElementById("state-layers");
       const csvEl = document.getElementById("state-csv");
       const layerCodeEl = document.getElementById("state-layercode");
+      const mappingEl = document.getElementById("state-mapping");
+      const isoEl = document.getElementById("state-iso");
       const historyEl = document.getElementById("history");
 
       function buildCoords() {
@@ -420,7 +437,7 @@
           return (size - 1 - idx(y)) * size + idx(x);
         }
         if (face === "B") {
-          return (size - 1 - idx(y)) * size + (size - 1 - idx(x));
+          return (size - 1 - idx(y)) * size + idx(x);
         }
         if (face === "R") {
           return (size - 1 - idx(y)) * size + (size - 1 - idx(z));
@@ -494,6 +511,15 @@
         { face: "R", label: "Ri" },
         { face: "D", label: "Do" },
         { face: "B", label: "Ba" },
+      ];
+
+      const FACE_DISPLAY = [
+        { face: "U", label: "Up", name: "Haut" },
+        { face: "D", label: "Do", name: "Bas" },
+        { face: "F", label: "Fr", name: "Avant" },
+        { face: "B", label: "Ba", name: "Arriere" },
+        { face: "R", label: "Ri", name: "Droite" },
+        { face: "L", label: "Le", name: "Gauche" },
       ];
 
       function formatLayerCode(colors) {
@@ -593,6 +619,192 @@
         ].join("\n");
       }
 
+      function formatFaceNames() {
+        return FACE_DISPLAY.map(({ face, label, name }) => `${face} (${label}): ${name}`).join(
+          "\n",
+        );
+      }
+
+      function axisForFace(face) {
+        if (face === "U") return { axis: "y", layer: maxCoord };
+        if (face === "D") return { axis: "y", layer: minCoord };
+        if (face === "R") return { axis: "x", layer: maxCoord };
+        if (face === "L") return { axis: "x", layer: minCoord };
+        if (face === "F") return { axis: "z", layer: maxCoord };
+        return { axis: "z", layer: minCoord };
+      }
+
+      function testPointFor(frontFace, sideFace) {
+        const point = { x: 0, y: maxCoord, z: 0 };
+        const frontAxis = axisForFace(frontFace);
+        const sideAxis = axisForFace(sideFace);
+        point[frontAxis.axis] = frontAxis.layer;
+        point[sideAxis.axis] = sideAxis.layer;
+        return point;
+      }
+
+      function dot(a, b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+      }
+
+      function cross(a, b) {
+        return {
+          x: a.y * b.z - a.z * b.y,
+          y: a.z * b.x - a.x * b.z,
+          z: a.x * b.y - a.y * b.x,
+        };
+      }
+
+      const FACE_VECTORS = {
+        U: { x: 0, y: 1, z: 0 },
+        D: { x: 0, y: -1, z: 0 },
+        F: { x: 0, y: 0, z: 1 },
+        B: { x: 0, y: 0, z: -1 },
+        R: { x: 1, y: 0, z: 0 },
+        L: { x: -1, y: 0, z: 0 },
+      };
+
+      const VEC_TO_FACE = Object.entries(FACE_VECTORS).reduce((acc, [face, vec]) => {
+        acc[`${vec.x},${vec.y},${vec.z}`] = face;
+        return acc;
+      }, {});
+
+      function upVectorForFront(frontFace) {
+        if (frontFace === "U") return { x: 0, y: 0, z: -1 };
+        if (frontFace === "D") return { x: 0, y: 0, z: 1 };
+        return { x: 0, y: 1, z: 0 };
+      }
+
+      function basisForFront(frontFace) {
+        const front = FACE_VECTORS[frontFace];
+        const up = upVectorForFront(frontFace);
+        const right = cross(up, front);
+        return { front, up, right };
+      }
+
+      function rotateVecByFront(vec, frontFace) {
+        const basis = basisForFront(frontFace);
+        if (!basis.front) return vec;
+        return {
+          x: dot(vec, basis.right),
+          y: dot(vec, basis.up),
+          z: dot(vec, basis.front),
+        };
+      }
+
+      function chooseTurnSignForFront(frontFace, sideFace) {
+        const { axis } = axisForFace(sideFace);
+        const point = testPointFor(frontFace, sideFace);
+        const plus = rotate90(point, axis, 1);
+        const minus = rotate90(point, axis, -1);
+        const yPlus = rotateVecByFront(plus, frontFace).y;
+        const yMinus = rotateVecByFront(minus, frontFace).y;
+        return yPlus >= yMinus ? 1 : -1;
+      }
+
+      const BASE_DIR = {
+        U: -1,
+        D: 1,
+        R: -1,
+        L: 1,
+        F: -1,
+        B: 1,
+      };
+
+      const FRONT_ORDER = ["F", "R", "B", "L", "U", "D"];
+      const FACE_NAME_MAP = FACE_DISPLAY.reduce((acc, item) => {
+        acc[item.face] = item.name;
+        return acc;
+      }, {});
+
+      function notationFor(face, dir) {
+        if (!dir) return "--";
+        return dir === BASE_DIR[face] ? face : `${face}'`;
+      }
+
+      function negate(vec) {
+        return { x: -vec.x, y: -vec.y, z: -vec.z };
+      }
+
+      function faceFromVec(vec) {
+        return VEC_TO_FACE[`${vec.x},${vec.y},${vec.z}`];
+      }
+
+      function targetFaceForMove(frontFace, base) {
+        const basis = basisForFront(frontFace);
+        if (!basis.front) return null;
+        if (base === "F") return faceFromVec(basis.front);
+        if (base === "B") return faceFromVec(negate(basis.front));
+        if (base === "U") return faceFromVec(basis.up);
+        if (base === "D") return faceFromVec(negate(basis.up));
+        if (base === "R") return faceFromVec(basis.right);
+        if (base === "L") return faceFromVec(negate(basis.right));
+        return null;
+      }
+
+      function formatMappedMove(face, modifier) {
+        if (!face) return "--";
+        if (modifier === "2") return `${face}2`;
+        if (modifier === "'") return `${face}'`;
+        return face;
+      }
+
+      function mapMoveForFront(frontFace, move) {
+        const base = move[0];
+        const modifier = move[1] || "";
+        const targetFace = targetFaceForMove(frontFace, base);
+        if (!targetFace) return "--";
+        if (base !== "R" && base !== "L") {
+          return formatMappedMove(targetFace, modifier);
+        }
+        const turns = modifier === "'" ? -1 : 1;
+        const sign = chooseTurnSignForFront(frontFace, targetFace);
+        return notationFor(targetFace, sign * turns);
+      }
+
+      function formatMappingTable() {
+        const moves = ["R", "R'", "L", "L'", "U", "U'", "D", "D'", "F", "F'", "B", "B'"];
+        const rows = [["-----", ...moves.map(() => "--")]];
+
+        FRONT_ORDER.forEach((front) => {
+          const label = FACE_NAME_MAP[front]
+            ? `${front} ${FACE_NAME_MAP[front]}`
+            : front;
+          rows.push([
+            label,
+            ...moves.map((move) => mapMoveForFront(front, move)),
+          ]);
+        });
+
+        const widths = rows[0].map((_, index) =>
+          Math.max(...rows.map((row) => row[index].length)),
+        );
+        return rows
+          .map((row) =>
+            row.map((cell, idx) => cell.padEnd(widths[idx])).join("  "),
+          )
+          .join("\n");
+      }
+
+      function formatIsometric(colors) {
+        const top = faceLines("U", colors).map((row) => row.map(formatCell).join(" "));
+        const left = faceLines("L", colors).map((row) => row.map(formatCell).join(" "));
+        const front = faceLines("F", colors).map((row) => row.map(formatCell).join(" "));
+        const lines = [];
+
+        top.forEach((row, idx) => {
+          const indent = " ".repeat((top.length - idx) * 2);
+          lines.push(`${indent}/ ${row} /`);
+        });
+
+        left.forEach((row, idx) => {
+          const indent = " ".repeat(2);
+          lines.push(`${indent}| ${row} | ${front[idx]}`);
+        });
+
+        return lines.join("\n");
+      }
+
       function renderViews() {
         const colors = faceColors();
         listEl.innerHTML = formatList(colors);
@@ -600,6 +812,8 @@
         layersEl.innerHTML = formatLayers(colors);
         csvEl.innerHTML = formatCsv(colors);
         layerCodeEl.innerHTML = formatLayerCode(colors);
+        mappingEl.innerHTML = formatMappingTable();
+        isoEl.innerHTML = formatIsometric(colors);
         requestAnimationFrame(syncViewHeights);
       }
 
