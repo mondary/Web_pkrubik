@@ -219,6 +219,19 @@
         pointer-events: none;
       }
 
+      .moves-overlay {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #f4f6fb;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        pointer-events: none;
+      }
+
       @media (max-width: 900px) {
         .layout {
           grid-template-columns: 1fr;
@@ -240,10 +253,11 @@
 
       <section class="layout">
          <div class="stage">
-           <div class="viewport" id="viewport">
-             <div class="cube" id="cube"></div>
-             <div class="coords-overlay" id="coords-overlay">rotX: 0, rotY: 0</div>
-           </div>
+             <div class="viewport" id="viewport">
+              <div class="cube" id="cube"></div>
+              <div class="coords-overlay" id="coords-overlay">rotX: 0, rotY: 0</div>
+              <div class="moves-overlay" id="moves-overlay">Mouvements: 0</div>
+            </div>
            <p class="small">
              Glissez pour orienter le cube. Les mouvements utilisent la notation internationale (U, D, L, R, F, B).
            </p>
@@ -266,28 +280,14 @@
            </div>
 
           <div class="action-row">
-            <strong>Compteur</strong>
-            <div class="stat">
-              <span>Mouvements</span>
-              <span id="move-count">0</span>
-            </div>
-          </div>
-
-          <div class="action-row">
             <strong>Mouvements rapides</strong>
             <div class="moves" id="move-buttons"></div>
           </div>
 
-          <div class="action-row">
-            <strong>Notation</strong>
-            <input id="sequence-input" type="text" placeholder="R U R' U'" />
-            <button id="apply-sequence">Appliquer la séquence</button>
-          </div>
-
            <div class="action-row">
-             <strong>Actions</strong>
-             <button id="reset">Réinitialiser</button>
-             <button id="scramble">Mélanger</button>
+             <strong>Notation</strong>
+             <input id="sequence-input" type="text" placeholder="R U R' U'" />
+             <button id="apply-sequence">Appliquer la séquence</button>
            </div>
         </aside>
       </section>
@@ -340,15 +340,21 @@
         L: -1,
       };
 
-      function updateMoveCount(delta) {
-        moveCount += delta;
-        moveCountEl.textContent = moveCount;
-      }
+       function updateMoveCount(delta) {
+         moveCount += delta;
+         if (moveCountEl) {
+           moveCountEl.textContent = moveCount;
+         }
+         document.getElementById("moves-overlay").textContent = `Mouvements: ${moveCount}`;
+       }
 
-      function resetMoveCount() {
-        moveCount = 0;
-        moveCountEl.textContent = 0;
-      }
+       function resetMoveCount() {
+         moveCount = 0;
+         if (moveCountEl) {
+           moveCountEl.textContent = 0;
+         }
+         document.getElementById("moves-overlay").textContent = `Mouvements: 0`;
+       }
 
       function buildCube(size) {
         cubeSize = size;
@@ -695,15 +701,7 @@
         enqueueMoves(moves);
       });
 
-      document.getElementById("reset").addEventListener("click", () => {
-        moveChain = moveChain.then(() => {
-          resetState();
-        });
-      });
 
-       document.getElementById("scramble").addEventListener("click", () => {
-         scramble();
-       });
 
       cubeTypeEl.addEventListener("change", () => {
         const value = cubeTypeEl.value;
@@ -735,7 +733,7 @@
       let lastX = 0;
       let lastY = 0;
        let rotX = -15;
-       let rotY = 70;
+       let rotY = 45;
 
        function updateCubeRotation() {
          cubeEl.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
