@@ -60,18 +60,26 @@
       .layout {
         display: grid;
         gap: 6px;
-        grid-template-columns: 4fr 1fr;
+        grid-template-columns: 1fr 0.6fr;
+        grid-template-areas:
+          "main moves"
+          "history moves";
+        grid-template-rows: minmax(0, 0.7fr) minmax(0, 0.8fr);
         align-items: start;
         height: calc(100vh - 78px);
       }
 
       .left-grid {
+        grid-area: main;
         display: grid;
-        gap: 6px;
+        gap: 4px;
         grid-template-columns: repeat(100, minmax(0, 1fr));
-        grid-auto-rows: minmax(0, auto);
+        grid-template-rows: auto minmax(0, 0.42fr) minmax(0, 0.42fr);
         align-items: start;
+        align-content: start;
         height: 100%;
+        min-height: 0;
+        overflow: auto;
       }
 
       .panel {
@@ -80,6 +88,7 @@
         padding: 8px;
         display: grid;
         gap: 8px;
+        min-height: 0;
       }
 
       .panel--csv {
@@ -93,7 +102,7 @@
       }
 
       .panel--net {
-        grid-column: 55 / span 27;
+        grid-column: 78 / span 22;
         grid-row: 2;
       }
 
@@ -103,16 +112,26 @@
       }
 
       .panel--layers {
-        grid-column: 28 / span 27;
+        grid-column: 34 / span 44;
         grid-row: 2;
       }
 
       .panel--list {
-        grid-column: 1 / span 27;
+        grid-column: 1 / span 33;
         grid-row: 2;
       }
 
       .panel--history {
+        grid-area: history;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .panel--moves {
+        grid-area: moves;
         display: grid;
         grid-template-rows: auto 1fr;
         height: 100%;
@@ -160,6 +179,7 @@
         font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
         font-size: 11px;
         line-height: 1.15;
+        min-height: 0;
       }
 
       .csv-line {
@@ -198,6 +218,51 @@
 
       .algo-item {
         color: var(--text);
+      }
+
+      .move-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .algo-rows {
+        display: grid;
+        gap: 6px;
+      }
+
+      .algo-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px;
+        align-items: stretch;
+      }
+
+      .algo-main {
+        justify-content: flex-start;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .algo-step {
+        white-space: nowrap;
+      }
+
+      .move-step {
+        padding: 0 2px;
+        border-radius: 4px;
+        color: var(--muted);
+      }
+
+      .move-step.active {
+        color: var(--accent);
+        background: rgba(247, 179, 43, 0.18);
+      }
+
+      .panel--net pre,
+      .panel--layers pre {
+        max-height: 100%;
+        overflow: auto;
       }
 
       .history-label {
@@ -265,6 +330,7 @@
         .layout {
           grid-template-columns: 1fr;
           grid-template-rows: auto;
+          grid-template-areas: none;
         }
 
         .left-grid {
@@ -317,10 +383,10 @@
           <pre id="state-list"></pre>
         </section>
 
-        <section class="panel panel--layers">
-          <h2>Layers</h2>
-          <pre id="state-layers"></pre>
-        </section>
+      <section class="panel panel--layers">
+        <h2>Layers view</h2>
+        <pre id="state-layers"></pre>
+      </section>
 
         <section class="panel panel--net">
           <h2>Net view</h2>
@@ -335,22 +401,18 @@
         <section class="panel panel--mapping">
           <h2>View-relative mapping</h2>
           <pre id="state-mapping" class="csv-line"></pre>
-          <div class="algo-list">
-            <div class="algo-item">🔥 Sexy move: R U R' U'</div>
-            <div class="algo-item">🧢 Chapeau gauche: U' L' U L U F U' F'</div>
-            <div class="algo-item">🎩 Chapeau droite: U R U' R' U' F' U F</div>
-            <div class="algo-item">💛 Croix jaune: F R U R' U' F'</div>
-            <div class="algo-item">🪑 Chaise droite: R U2 R' U' R U' R'</div>
-            <div class="algo-item">🪑 Chaise gauche: L' U2 L U L' U L</div>
-            <div class="algo-item">🤝 Amis de droite: R U' L' U R' U' L U</div>
-            <div class="algo-item">🤝 Amis de gauche: L' U R U' L U R' U'</div>
-          </div>
         </section>
       </div>
 
       <section class="panel panel--history">
         <h2>History</h2>
         <div id="history" class="history"></div>
+      </section>
+
+      <section class="panel panel--moves">
+        <h2>Mouvements</h2>
+        <div class="move-grid" id="debug-move-buttons"></div>
+        <div class="algo-rows" id="debug-algos"></div>
       </section>
     </div>
 
@@ -380,6 +442,8 @@
       const mappingEl = document.getElementById("state-mapping");
       const isoEl = document.getElementById("state-iso");
       const historyEl = document.getElementById("history");
+      const moveButtonsEl = document.getElementById("debug-move-buttons");
+      const algoRowsEl = document.getElementById("debug-algos");
 
       function buildCoords() {
         coords = Array.from({ length: size }, (_, i) => i - (size - 1) / 2);
@@ -916,11 +980,130 @@
         historyEl.prepend(row);
       }
 
+      function applyAndLog(move) {
+        applyMove(move);
+        step += 1;
+        logState(`Step ${step}: ${move}`);
+      }
+
+      function applyMoves(moves) {
+        moves.forEach((move) => applyAndLog(move));
+        renderViews();
+      }
+
+      const moveList = [
+        "R",
+        "R'",
+        "R2",
+        "L",
+        "L'",
+        "L2",
+        "U",
+        "U'",
+        "U2",
+        "D",
+        "D'",
+        "D2",
+        "F",
+        "F'",
+        "F2",
+        "B",
+        "B'",
+        "B2",
+      ];
+
+      const algoSequences = [
+        { id: "sexy", label: "🔥 Sexy move", seq: ["R", "U", "R'", "U'"] },
+        { id: "left-hat", label: "🧢 Chapeau gauche", seq: ["U'", "L'", "U", "L", "U", "F", "U'", "F'"] },
+        { id: "right-hat", label: "🎩 Chapeau droite", seq: ["U", "R", "U'", "R'", "U'", "F'", "U", "F"] },
+        { id: "yellow-cross", label: "💛 Croix jaune", seq: ["F", "R", "U", "R'", "U'", "F'"] },
+        { id: "chair-right", label: "🪑 Chaise droite", seq: ["R", "U2", "R'", "U'", "R", "U'", "R'"] },
+        { id: "left-chair", label: "🪑 Chaise gauche", seq: ["L'", "U2", "L", "U", "L'", "U", "L"] },
+        { id: "right-friends", label: "🤝 Amis de droite", seq: ["R", "U'", "L'", "U", "R'", "U'", "L", "U"] },
+        { id: "left-friends", label: "🤝 Amis de gauche", seq: ["L'", "U", "R", "U'", "L", "U", "R'", "U'"] },
+      ];
+
+      const algoSteps = {};
+      const algoSpans = {};
+
+      function buildMoveButtons() {
+        if (!moveButtonsEl) return;
+        moveButtonsEl.innerHTML = "";
+        moveList.forEach((move) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = move;
+          button.addEventListener("click", () => {
+            applyAndLog(move);
+            renderViews();
+          });
+          moveButtonsEl.appendChild(button);
+        });
+      }
+
+      function buildAlgoRows() {
+        if (!algoRowsEl) return;
+        algoRowsEl.innerHTML = "";
+        algoSequences.forEach((algo) => {
+          algoSteps[algo.id] = 0;
+          const row = document.createElement("div");
+          row.className = "algo-row";
+          const main = document.createElement("button");
+          main.type = "button";
+          main.className = "algo-main";
+          const seqHtml = algo.seq
+            .map((move) => `<span class="move-step" data-move="${move}">${move}</span>`)
+            .join(" ");
+          main.innerHTML = `${algo.label} · ${seqHtml}`;
+          const stepBtn = document.createElement("button");
+          stepBtn.type = "button";
+          stepBtn.className = "algo-step";
+          stepBtn.textContent = "Pas a pas";
+          row.appendChild(main);
+          row.appendChild(stepBtn);
+          algoRowsEl.appendChild(row);
+          algoSpans[algo.id] = Array.from(main.querySelectorAll(".move-step"));
+          main.addEventListener("click", () => {
+            clearAlgoHighlight(algo.id);
+            algoSteps[algo.id] = 0;
+            applyMoves(algo.seq);
+          });
+          stepBtn.addEventListener("click", () => {
+            stepAlgo(algo.id, algo.seq);
+          });
+        });
+      }
+
+      function highlightAlgoStep(key, index) {
+        const spans = algoSpans[key];
+        if (!spans) return;
+        spans.forEach((span, idx) => span.classList.toggle("active", idx === index));
+      }
+
+      function clearAlgoHighlight(key) {
+        const spans = algoSpans[key];
+        if (!spans) return;
+        spans.forEach((span) => span.classList.remove("active"));
+      }
+
+      function clearAllAlgoHighlights() {
+        Object.keys(algoSpans).forEach((key) => clearAlgoHighlight(key));
+      }
+
+      function stepAlgo(key, sequence) {
+        const index = algoSteps[key] % sequence.length;
+        highlightAlgoStep(key, index);
+        algoSteps[key] = (index + 1) % sequence.length;
+        applyAndLog(sequence[index]);
+        renderViews();
+      }
+
       function resetCube() {
         buildCoords();
         stickers = createSolvedStickers();
         step = 0;
         historyEl.innerHTML = "";
+        clearAllAlgoHighlights();
         logState("Step 0: reset");
         renderViews();
       }
@@ -929,18 +1112,15 @@
         const input = document.getElementById("sequence");
         const moves = parseSequence(input.value);
         if (!moves.length) return;
-        moves.forEach((move) => {
-          applyMove(move);
-          step += 1;
-          logState(`Step ${step}: ${move}`);
-        });
-        renderViews();
+        applyMoves(moves);
       });
 
       document.getElementById("reset").addEventListener("click", () => {
         resetCube();
       });
 
+      buildMoveButtons();
+      buildAlgoRows();
       resetCube();
     </script>
   </body>
