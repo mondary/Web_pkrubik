@@ -128,6 +128,27 @@
         transition: background-color 0.15s ease-out;
       }
 
+      .sticker.is-hidden {
+        opacity: 0;
+      }
+
+      .slice-group {
+        position: absolute;
+        inset: 0;
+        transform-style: preserve-3d;
+        pointer-events: none;
+      }
+
+      .slice-face {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+      }
+
+      .slice-sticker {
+        transition: none;
+      }
+
       .move-indicator {
         position: absolute;
         top: 6px;
@@ -845,6 +866,87 @@
         return Math.abs(turns);
       }
 
+      function faceFromNormal(normal) {
+        if (normal.y === 1) return "U";
+        if (normal.y === -1) return "D";
+        if (normal.z === 1) return "F";
+        if (normal.z === -1) return "B";
+        if (normal.x === 1) return "R";
+        return "L";
+      }
+
+      function layerRotation(base, turns) {
+        const { axis } = axisForFace(base);
+        let sign = faceVisualSign[base] || 1;
+        if (axis === "y") sign *= -1;
+        return { axis, angle: turns * 90 * sign };
+      }
+
+      function buildSliceGroup(axis, layerValue) {
+        const faceBuckets = {};
+        const hidden = [];
+
+        stickers.forEach((sticker) => {
+          if (!isLayer(sticker.pos, axis, layerValue)) return;
+          const face = faceFromNormal(sticker.normal);
+          const index = getFaceIndex(face, sticker.pos);
+          const row = Math.floor(index / cubeSize);
+          const col = index % cubeSize;
+          if (!faceBuckets[face]) faceBuckets[face] = [];
+          faceBuckets[face].push({ row, col, color: sticker.color });
+          const stickerEl = stickersByFace[face][index];
+          if (stickerEl) {
+            stickerEl.classList.add("is-hidden");
+            hidden.push(stickerEl);
+          }
+        });
+
+        if (!hidden.length) return null;
+        const group = document.createElement("div");
+        group.className = "slice-group";
+
+        Object.entries(faceBuckets).forEach(([face, items]) => {
+          const faceEl = document.createElement("div");
+          faceEl.className = "face slice-face";
+          faceEl.style.transform = faceTransforms[face];
+          items.forEach((item) => {
+            const stickerEl = document.createElement("div");
+            stickerEl.className = "sticker slice-sticker";
+            stickerEl.style.background = item.color;
+            stickerEl.style.gridRowStart = item.row + 1;
+            stickerEl.style.gridColumnStart = item.col + 1;
+            faceEl.appendChild(stickerEl);
+          });
+          group.appendChild(faceEl);
+        });
+
+        cubeEl.appendChild(group);
+        return { group, hidden };
+      }
+
+      async function animateLayer(resolved) {
+        const { base, turns } = resolved;
+        const { axis, layer } = axisForFace(base);
+        const rotation = layerRotation(base, turns);
+        const slice = buildSliceGroup(axis, layer);
+        if (!slice) return [];
+        const duration = Number(speedEl.value) * Math.abs(turns);
+        const { group, hidden } = slice;
+
+        group.style.transition = `transform ${duration}ms ease-in-out`;
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        if (rotation.axis === "x") group.style.transform = `rotateX(${rotation.angle}deg)`;
+        if (rotation.axis === "y") group.style.transform = `rotateY(${rotation.angle}deg)`;
+        if (rotation.axis === "z") group.style.transform = `rotateZ(${rotation.angle}deg)`;
+        await sleep(duration);
+        group.remove();
+        return hidden;
+      }
+
+      function restoreHidden(hidden) {
+        hidden.forEach((el) => el.classList.remove("is-hidden"));
+      }
+
       function parseSequence(sequence) {
         return sequence
           .trim()
@@ -930,16 +1032,21 @@
 
       function enqueueMove(move) {
         moveChain = moveChain.then(async () => {
+          let hidden = [];
           try {
             const resolved = resolveViewMove(move);
             const { base, turns } = resolved;
 
-            await animateFace(base, turns);
+            hidden = await animateLayer(resolved);
             const delta = applyMoveState(move);
             updateMoveCount(delta);
             render();
           } catch (e) {
             console.error("Erreur lors du mouvement :", e);
+          } finally {
+            if (hidden.length) {
+              requestAnimationFrame(() => restoreHidden(hidden));
+            }
           }
         });
       }
