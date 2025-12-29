@@ -74,7 +74,7 @@
         display: grid;
         gap: 4px;
         grid-template-columns: repeat(100, minmax(0, 1fr));
-        grid-template-rows: auto minmax(0, 0.42fr) minmax(0, 0.42fr);
+        grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
         align-items: start;
         align-content: start;
         height: 100%;
@@ -99,6 +99,7 @@
       .panel--iso {
         grid-column: 1 / span 40;
         grid-row: 3;
+        align-self: start;
       }
 
       .panel--net {
@@ -119,6 +120,7 @@
       .panel--list {
         grid-column: 1 / span 33;
         grid-row: 2;
+        align-self: start;
       }
 
       .panel--history {
@@ -206,7 +208,8 @@
 
       .history-row {
         overflow-x: auto;
-        min-height: 1.2em;
+        min-height: 1.6em;
+        line-height: 1.4;
       }
 
       .algo-list {
@@ -263,6 +266,15 @@
       .panel--layers pre {
         max-height: 100%;
         overflow: auto;
+      }
+
+      .panel--list,
+      .panel--layers,
+      .panel--net,
+      .panel--iso,
+      .panel--mapping {
+        height: 100%;
+        overflow: hidden;
       }
 
       .history-label {
