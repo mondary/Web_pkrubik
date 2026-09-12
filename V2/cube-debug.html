@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cube Debug</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <style>
+      :root {
+        --bg: #0e1014;
+        --panel: #151922;
+        --text: #f4f6fb;
+        --muted: #b9c0d1;
+        --accent: #f7b32b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding: 72px 12px 12px;
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 4px 0;
+      }
+
+      .fixed-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: var(--panel);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        z-index: 10;
+      }
+
+      .header-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .header-title {
+        margin: 0;
+        font-size: 17px;
+        letter-spacing: -0.01em;
+      }
+
+      .layout {
+        display: grid;
+        gap: 6px;
+        grid-template-columns: 1fr 0.6fr;
+        grid-template-areas:
+          "main moves"
+          "history moves";
+        grid-template-rows: minmax(0, 0.7fr) minmax(0, 0.8fr);
+        align-items: start;
+        height: calc(100vh - 78px);
+      }
+
+      .left-grid {
+        grid-area: main;
+        display: grid;
+        gap: 4px;
+        grid-template-columns: repeat(100, minmax(0, 1fr));
+        grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+        align-items: start;
+        align-content: start;
+        height: 100%;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .panel {
+        background: var(--panel);
+        border-radius: 12px;
+        padding: 8px;
+        display: grid;
+        gap: 8px;
+        min-height: 0;
+      }
+
+      .panel--csv {
+        grid-column: 1 / -1;
+        grid-row: 1;
+      }
+
+      .panel--iso {
+        grid-column: 1 / span 40;
+        grid-row: 3;
+        align-self: start;
+      }
+
+      .panel--net {
+        grid-column: 78 / span 22;
+        grid-row: 2;
+      }
+
+      .panel--mapping {
+        grid-column: 61 / span 40;
+        grid-row: 3;
+      }
+
+      .panel--layers {
+        grid-column: 34 / span 44;
+        grid-row: 2;
+      }
+
+      .panel--list {
+        grid-column: 1 / span 33;
+        grid-row: 2;
+        align-self: start;
+      }
+
+      .panel--history {
+        grid-area: history;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .panel--moves {
+        grid-area: moves;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) auto auto auto;
+        gap: 4px;
+        align-items: center;
+        flex: 1;
+      }
+
+      input[type="text"],
+      select {
+        width: 100%;
+        padding: 5px 6px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #0f1320;
+        color: var(--text);
+      }
+
+      button {
+        border: none;
+        background: #222a3a;
+        color: var(--text);
+        padding: 6px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      button:hover {
+        background: #2b3550;
+      }
+
+      pre {
+        background: #0f1320;
+        padding: 6px;
+        border-radius: 12px;
+        color: var(--text);
+        margin: 0;
+        white-space: pre;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 11px;
+        line-height: 1.15;
+        min-height: 0;
+      }
+
+      .csv-line {
+        overflow-x: auto;
+      }
+
+      .legend {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .mapping-table {
+        display: grid;
+        gap: 6px;
+      }
+
+      .history {
+        display: grid;
+        gap: 8px;
+        max-height: none;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .history-row {
+        overflow-x: auto;
+        min-height: 1.6em;
+        line-height: 1.4;
+      }
+
+      .algo-list {
+        display: grid;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .algo-item {
+        color: var(--text);
+      }
+
+      .move-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .algo-rows {
+        display: grid;
+        gap: 6px;
+      }
+
+      .algo-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px;
+        align-items: stretch;
+      }
+
+      .algo-main {
+        justify-content: flex-start;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .algo-step {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .move-step {
+        padding: 0 2px;
+        border-radius: 4px;
+        color: var(--muted);
+      }
+
+      .move-step.active {
+        color: var(--accent);
+        background: rgba(247, 179, 43, 0.18);
+      }
+
+      .panel--net pre,
+      .panel--layers pre {
+        max-height: 100%;
+        overflow: auto;
+      }
+
+      .panel--list,
+      .panel--layers,
+      .panel--net,
+      .panel--iso,
+      .panel--mapping {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .history-label {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      details {
+        background: #0f1320;
+        padding: 6px;
+        border-radius: 10px;
+      }
+
+      summary {
+        cursor: pointer;
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .c {
+        display: inline-block;
+        font-weight: 700;
+        text-align: center;
+        width: 1ch;
+      }
+
+      .c-Y {
+        color: #f6c445;
+      }
+
+      .c-W {
+        color: #f4f6fb;
+      }
+
+      .c-R {
+        color: #ff3b3b;
+      }
+
+      .c-G {
+        color: #2ecc71;
+      }
+
+      .c-O {
+        color: #ff5a1f;
+      }
+
+      .c-B {
+        color: #2d6cdf;
+      }
+
+      .c-empty {
+        color: #495063;
+      }
+
+      .c-label {
+        color: var(--muted);
+      }
+
+      .csv-label {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto;
+          grid-template-areas: none;
+        }
+
+        .left-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .panel--csv,
+        .panel--mapping,
+        .panel--iso,
+        .panel--list,
+        .panel--net,
+        .panel--layers,
+        .panel--history {
+          grid-column: auto;
+          grid-row: auto;
+        }
+
+        .controls {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        body {
+          padding-top: 150px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="fixed-header">
+      <div class="header-inner">
+        <h1 class="header-title">Cube debug</h1>
+        <div class="controls">
+          <input id="sequence" type="text" value="R U R' U'" />
+          <button id="apply">Apply</button>
+          <button id="reset">Reset</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="left-grid">
+        <section class="panel panel--csv">
+          <h2>CSV view</h2>
+          <pre class="csv-line">version courte = <span id="state-csv"></span></pre>
+          <pre class="csv-line">version layer = <span id="state-layercode"></span></pre>
+        </section>
+
+        <section class="panel panel--list">
+          <h2>List view</h2>
+          <pre id="state-list"></pre>
+        </section>
+
+      <section class="panel panel--layers">
+        <h2>Layers view</h2>
+        <pre id="state-layers"></pre>
+      </section>
+
+        <section class="panel panel--net">
+          <h2>Net view</h2>
+          <pre id="state-net"></pre>
+        </section>
+
+        <section class="panel panel--iso">
+          <h2>Isometric ASCII</h2>
+          <pre id="state-iso"></pre>
+        </section>
+
+        <section class="panel panel--mapping">
+          <h2>View-relative mapping</h2>
+          <pre id="state-mapping" class="csv-line"></pre>
+        </section>
+      </div>
+
+      <section class="panel panel--history">
+        <h2>History</h2>
+        <div id="history" class="history"></div>
+      </section>
+
+      <section class="panel panel--moves">
+        <h2>Mouvements</h2>
+        <div class="move-grid" id="debug-move-buttons"></div>
+        <div class="algo-rows" id="debug-algos"></div>
+      </section>
+    </div>
+
+    <script>
+      const FACE_CODE = {
+        U: "Y",
+        D: "W",
+        F: "R",
+        R: "G",
+        L: "B",
+        B: "O",
+      };
+
+      const FACE_NAMES = ["U", "L", "F", "R", "D", "B"];
+      let size = 3;
+      let coords = [];
+      let maxCoord = 1;
+      let minCoord = -1;
+      let stickers = [];
+      let step = 0;
+
+      const listEl = document.getElementById("state-list");
+      const netEl = document.getElementById("state-net");
+      const csvEl = document.getElementById("state-csv");
+      const layerCodeEl = document.getElementById("state-layercode");
+      const layersEl = document.getElementById("state-layers");
+      const mappingEl = document.getElementById("state-mapping");
+      const isoEl = document.getElementById("state-iso");
+      const historyEl = document.getElementById("history");
+      const moveButtonsEl = document.getElementById("debug-move-buttons");
+      const algoRowsEl = document.getElementById("debug-algos");
+
+      function buildCoords() {
+        coords = Array.from({ length: size }, (_, i) => i - (size - 1) / 2);
+        maxCoord = coords[coords.length - 1];
+        minCoord = coords[0];
+      }
+
+      function createSolvedStickers() {
+        const result = [];
+        const add = (x, y, z, nx, ny, nz, face) => {
+          result.push({
+            pos: { x, y, z },
+            normal: { x: nx, y: ny, z: nz },
+            color: FACE_CODE[face],
+          });
+        };
+
+        coords.forEach((x) => {
+          coords.forEach((z) => {
+            add(x, maxCoord, z, 0, 1, 0, "U");
+            add(x, minCoord, z, 0, -1, 0, "D");
+          });
+        });
+
+        coords.forEach((x) => {
+          coords.forEach((y) => {
+            add(x, y, maxCoord, 0, 0, 1, "F");
+            add(x, y, minCoord, 0, 0, -1, "B");
+          });
+        });
+
+        coords.forEach((z) => {
+          coords.forEach((y) => {
+            add(maxCoord, y, z, 1, 0, 0, "R");
+            add(minCoord, y, z, -1, 0, 0, "L");
+          });
+        });
+
+        return result;
+      }
+
+      function rotate90({ x, y, z }, axis, direction) {
+        if (axis === "x") {
+          return direction > 0
+            ? { x, y: -z, z: y }
+            : { x, y: z, z: -y };
+        }
+        if (axis === "y") {
+          return direction > 0
+            ? { x: z, y, z: -x }
+            : { x: -z, y, z: x };
+        }
+        return direction > 0
+          ? { x: -y, y: x, z }
+          : { x: y, y: -x, z };
+      }
+
+      function isLayer(pos, axis, layerValue) {
+        return Math.abs(pos[axis] - layerValue) < 1e-6;
+      }
+
+      function rotateLayer(axis, layerValue, turns) {
+        const direction = turns > 0 ? 1 : -1;
+        const steps = Math.abs(turns);
+
+        for (let stepIdx = 0; stepIdx < steps; stepIdx += 1) {
+          stickers = stickers.map((sticker) => {
+            if (!isLayer(sticker.pos, axis, layerValue)) {
+              return sticker;
+            }
+
+            const newPos = rotate90(sticker.pos, axis, direction);
+            const newNormal = rotate90(sticker.normal, axis, direction);
+            return {
+              ...sticker,
+              pos: newPos,
+              normal: newNormal,
+            };
+          });
+        }
+      }
+
+      function applyMove(move) {
+        const base = move[0];
+        const modifier = move[1] || "";
+        let turns = 1;
+        if (modifier === "2") turns = 2;
+        if (modifier === "'") turns = -1;
+
+        switch (base) {
+          case "U":
+            rotateLayer("y", maxCoord, -turns);
+            break;
+          case "D":
+            rotateLayer("y", minCoord, turns);
+            break;
+          case "R":
+            rotateLayer("x", maxCoord, -turns);
+            break;
+          case "L":
+            rotateLayer("x", minCoord, turns);
+            break;
+          case "F":
+            rotateLayer("z", maxCoord, -turns);
+            break;
+          case "B":
+            rotateLayer("z", minCoord, turns);
+            break;
+          default:
+            break;
+        }
+      }
+
+      function parseSequence(sequence) {
+        return sequence
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .flatMap((token) => {
+            const match = token.match(/^([URFDLB])([2']?)$/);
+            return match ? [match[1] + match[2]] : [];
+          });
+      }
+
+      function getFaceIndex(face, pos) {
+        const { x, y, z } = pos;
+        const idx = (value) => coords.indexOf(value);
+
+        if (face === "U") {
+          return idx(z) * size + idx(x);
+        }
+        if (face === "D") {
+          return (size - 1 - idx(z)) * size + idx(x);
+        }
+        if (face === "F") {
+          return (size - 1 - idx(y)) * size + idx(x);
+        }
+        if (face === "B") {
+          return (size - 1 - idx(y)) * size + idx(x);
+        }
+        if (face === "R") {
+          return (size - 1 - idx(y)) * size + (size - 1 - idx(z));
+        }
+        return (size - 1 - idx(y)) * size + idx(z);
+      }
+
+      function faceColors() {
+        const colors = {
+          U: Array(size * size).fill("."),
+          D: Array(size * size).fill("."),
+          F: Array(size * size).fill("."),
+          B: Array(size * size).fill("."),
+          L: Array(size * size).fill("."),
+          R: Array(size * size).fill("."),
+        };
+
+        stickers.forEach((sticker) => {
+          const n = sticker.normal;
+          let face = "F";
+          if (n.y === 1) face = "U";
+          else if (n.y === -1) face = "D";
+          else if (n.z === 1) face = "F";
+          else if (n.z === -1) face = "B";
+          else if (n.x === 1) face = "R";
+          else if (n.x === -1) face = "L";
+
+          const index = getFaceIndex(face, sticker.pos);
+          colors[face][index] = sticker.color;
+        });
+
+        return colors;
+      }
+
+      function faceLines(face, colors) {
+        const lines = [];
+        for (let row = 0; row < size; row += 1) {
+          const start = row * size;
+          lines.push(colors[face].slice(start, start + size));
+        }
+        return lines;
+      }
+
+      function blankLines(faceWidth) {
+        return Array(size).fill(" ".repeat(faceWidth));
+      }
+
+      function mergeRow(rows, spacer) {
+        return rows[0].map((_, index) => rows.map((row) => row[index]).join(spacer));
+      }
+
+      function formatCell(code) {
+        if (code === ".") {
+          return `<span class="c c-empty">.</span>`;
+        }
+        return `<span class="c c-${code}">${code}</span>`;
+      }
+
+      function formatRow(row) {
+        return row.map(formatCell).join(" ");
+      }
+
+      function formatCompactRow(row) {
+        return row.map(formatCell).join("");
+      }
+
+      const FACE_ORDER = [
+        { face: "U", label: "Up" },
+        { face: "L", label: "Le" },
+        { face: "F", label: "Fr" },
+        { face: "R", label: "Ri" },
+        { face: "D", label: "Do" },
+        { face: "B", label: "Ba" },
+      ];
+
+      const FACE_DISPLAY = [
+        { face: "U", label: "Up", name: "Haut" },
+        { face: "D", label: "Do", name: "Bas" },
+        { face: "F", label: "Fr", name: "Avant" },
+        { face: "B", label: "Ba", name: "Arriere" },
+        { face: "R", label: "Ri", name: "Droite" },
+        { face: "L", label: "Le", name: "Gauche" },
+      ];
+
+      function formatLayerCode(colors) {
+        return FACE_ORDER.map(({ face, label }) => {
+          const name = `<span class="csv-label">${label}</span>`;
+          const rows = faceLines(face, colors)
+            .map((row) => formatCompactRow(row))
+            .join(".");
+          return `${name}:${rows}`;
+        }).join(",");
+      }
+
+      function formatLabelRow(label) {
+        const cells = Array(size).fill("&nbsp;");
+        cells[Math.floor(size / 2)] = label;
+        return cells
+          .map((cell) => `<span class="c c-label">${cell}</span>`)
+          .join(" ");
+      }
+
+      function formatList(colors) {
+        const faces = ["U", "L", "F", "R", "D", "B"].map((face) => ({
+          face,
+          rows: faceLines(face, colors).map(formatRow),
+        }));
+
+        const blocks = faces.map((block) => {
+          return [formatLabelRow(block.face), ...block.rows];
+        });
+
+        const spacer = "   ";
+        const merged = mergeRow(blocks, spacer);
+        return merged.join("\n");
+      }
+
+      function formatCsv(colors) {
+        return FACE_ORDER.map(({ face, label }) => {
+          const name = `<span class="csv-label">${label}</span>`;
+          const values = colors[face].map(formatCell).join("");
+          return `${name}:${values}`;
+        }).join(",");
+      }
+
+      function formatNetClassic(colors) {
+        const faceWidth = size * 2 - 1;
+        const spacer = "   ";
+        const U = faceLines("U", colors).map(formatRow);
+        const D = faceLines("D", colors).map(formatRow);
+        const L = faceLines("L", colors).map(formatRow);
+        const F = faceLines("F", colors).map(formatRow);
+        const R = faceLines("R", colors).map(formatRow);
+        const B = faceLines("B", colors).map(formatRow);
+        const blank = blankLines(faceWidth);
+
+        return [
+          ...mergeRow([blank, U, B], spacer),
+          ...mergeRow([L, F, R], spacer),
+          ...mergeRow([blank, D, blank], spacer),
+        ].join("\n");
+      }
+
+      function layerRowIndex(y) {
+        return size - 1 - coords.indexOf(y);
+      }
+
+      function formatLayerRow(y, colors) {
+        const rowIndex = layerRowIndex(y);
+        const rowNumber = coords.indexOf(y) + 1;
+        const grids = {
+          F: faceLines("F", colors),
+          R: faceLines("R", colors),
+          B: faceLines("B", colors),
+          L: faceLines("L", colors),
+          U: faceLines("U", colors),
+          D: faceLines("D", colors),
+        };
+
+        const ring = ["L", "F", "R", "B"].map((face) => {
+          return `${face}: ${formatRow(grids[face][rowIndex])}`;
+        });
+
+        return `(row ${rowNumber}) ${ring.join(" | ")}`;
+      }
+
+      function formatLayers(colors) {
+        const top = faceLines("U", colors).map(formatRow);
+        const bottom = faceLines("D", colors).map(formatRow);
+        const rows = [...coords].reverse().map((y) => formatLayerRow(y, colors));
+        return [
+          "U:",
+          ...top,
+          "",
+          rows.join("\n\n"),
+          "",
+          "D:",
+          ...bottom,
+        ].join("\n");
+      }
+
+      function formatFaceNames() {
+        return FACE_DISPLAY.map(({ face, label, name }) => `${face} (${label}): ${name}`).join(
+          "\n",
+        );
+      }
+
+      function axisForFace(face) {
+        if (face === "U") return { axis: "y", layer: maxCoord };
+        if (face === "D") return { axis: "y", layer: minCoord };
+        if (face === "R") return { axis: "x", layer: maxCoord };
+        if (face === "L") return { axis: "x", layer: minCoord };
+        if (face === "F") return { axis: "z", layer: maxCoord };
+        return { axis: "z", layer: minCoord };
+      }
+
+      function testPointFor(frontFace, sideFace) {
+        const point = { x: 0, y: maxCoord, z: 0 };
+        const frontAxis = axisForFace(frontFace);
+        const sideAxis = axisForFace(sideFace);
+        point[frontAxis.axis] = frontAxis.layer;
+        point[sideAxis.axis] = sideAxis.layer;
+        return point;
+      }
+
+      function dot(a, b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+      }
+
+      function cross(a, b) {
+        return {
+          x: a.y * b.z - a.z * b.y,
+          y: a.z * b.x - a.x * b.z,
+          z: a.x * b.y - a.y * b.x,
+        };
+      }
+
+      const FACE_VECTORS = {
+        U: { x: 0, y: 1, z: 0 },
+        D: { x: 0, y: -1, z: 0 },
+        F: { x: 0, y: 0, z: 1 },
+        B: { x: 0, y: 0, z: -1 },
+        R: { x: 1, y: 0, z: 0 },
+        L: { x: -1, y: 0, z: 0 },
+      };
+
+      const VEC_TO_FACE = Object.entries(FACE_VECTORS).reduce((acc, [face, vec]) => {
+        acc[`${vec.x},${vec.y},${vec.z}`] = face;
+        return acc;
+      }, {});
+
+      function upVectorForFront(frontFace) {
+        if (frontFace === "U") return { x: 0, y: 0, z: -1 };
+        if (frontFace === "D") return { x: 0, y: 0, z: 1 };
+        return { x: 0, y: 1, z: 0 };
+      }
+
+      function basisForFront(frontFace) {
+        const front = FACE_VECTORS[frontFace];
+        const up = upVectorForFront(frontFace);
+        const right = cross(up, front);
+        return { front, up, right };
+      }
+
+      function rotateVecByFront(vec, frontFace) {
+        const basis = basisForFront(frontFace);
+        if (!basis.front) return vec;
+        return {
+          x: dot(vec, basis.right),
+          y: dot(vec, basis.up),
+          z: dot(vec, basis.front),
+        };
+      }
+
+      function chooseTurnSignForFront(frontFace, sideFace) {
+        const { axis } = axisForFace(sideFace);
+        const point = testPointFor(frontFace, sideFace);
+        const plus = rotate90(point, axis, 1);
+        const minus = rotate90(point, axis, -1);
+        const yPlus = rotateVecByFront(plus, frontFace).y;
+        const yMinus = rotateVecByFront(minus, frontFace).y;
+        return yPlus >= yMinus ? 1 : -1;
+      }
+
+      const BASE_DIR = {
+        U: -1,
+        D: 1,
+        R: -1,
+        L: 1,
+        F: -1,
+        B: 1,
+      };
+
+      const FRONT_ORDER = ["F", "R", "B", "L", "U", "D"];
+      const FACE_NAME_MAP = FACE_DISPLAY.reduce((acc, item) => {
+        acc[item.face] = item.name;
+        return acc;
+      }, {});
+
+      function notationFor(face, dir) {
+        if (!dir) return "--";
+        return dir === BASE_DIR[face] ? face : `${face}'`;
+      }
+
+      function negate(vec) {
+        return { x: -vec.x, y: -vec.y, z: -vec.z };
+      }
+
+      function faceFromVec(vec) {
+        return VEC_TO_FACE[`${vec.x},${vec.y},${vec.z}`];
+      }
+
+      function targetFaceForMove(frontFace, base) {
+        const basis = basisForFront(frontFace);
+        if (!basis.front) return null;
+        if (base === "F") return faceFromVec(basis.front);
+        if (base === "B") return faceFromVec(negate(basis.front));
+        if (base === "U") return faceFromVec(basis.up);
+        if (base === "D") return faceFromVec(negate(basis.up));
+        if (base === "R") return faceFromVec(basis.right);
+        if (base === "L") return faceFromVec(negate(basis.right));
+        return null;
+      }
+
+      function formatMappedMove(face, modifier) {
+        if (!face) return "--";
+        if (modifier === "2") return `${face}2`;
+        if (modifier === "'") return `${face}'`;
+        return face;
+      }
+
+      function mapMoveForFront(frontFace, move) {
+        const base = move[0];
+        const modifier = move[1] || "";
+        const targetFace = targetFaceForMove(frontFace, base);
+        if (!targetFace) return "--";
+        if (base !== "R" && base !== "L") {
+          return formatMappedMove(targetFace, modifier);
+        }
+        const turns = modifier === "'" ? -1 : 1;
+        const sign = chooseTurnSignForFront(frontFace, targetFace);
+        return notationFor(targetFace, sign * turns);
+      }
+
+      function formatMappingTable() {
+        const moves = ["R", "R'", "L", "L'", "U", "U'", "D", "D'", "F", "F'", "B", "B'"];
+        const rows = [["-----", ...moves.map(() => "--")]];
+
+        FRONT_ORDER.forEach((front) => {
+          const label = FACE_NAME_MAP[front]
+            ? `${front} ${FACE_NAME_MAP[front]}`
+            : front;
+          rows.push([
+            label,
+            ...moves.map((move) => mapMoveForFront(front, move)),
+          ]);
+        });
+
+        const widths = rows[0].map((_, index) =>
+          Math.max(...rows.map((row) => row[index].length)),
+        );
+        return rows
+          .map((row) =>
+            row.map((cell, idx) => cell.padEnd(widths[idx])).join("  "),
+          )
+          .join("\n");
+      }
+
+      function formatIsometric(colors) {
+        const top = faceLines("U", colors).map((row) => row.map(formatCell).join(" "));
+        const left = faceLines("L", colors).map((row) => row.map(formatCell).join(" "));
+        const front = faceLines("F", colors).map((row) => row.map(formatCell).join(" "));
+        const lines = [];
+
+        top.forEach((row, idx) => {
+          const indent = " ".repeat((top.length - idx) * 2);
+          lines.push(`${indent}/ ${row} /`);
+        });
+
+        left.forEach((row, idx) => {
+          const indent = " ".repeat(2);
+          lines.push(`${indent}| ${row} | ${front[idx]}`);
+        });
+
+        return lines.join("\n");
+      }
+
+      function renderViews() {
+        const colors = faceColors();
+        listEl.innerHTML = formatList(colors);
+        netEl.innerHTML = formatNetClassic(colors);
+        layersEl.innerHTML = formatLayers(colors);
+        csvEl.innerHTML = formatCsv(colors);
+        layerCodeEl.innerHTML = formatLayerCode(colors);
+        mappingEl.innerHTML = formatMappingTable();
+        isoEl.innerHTML = formatIsometric(colors);
+        requestAnimationFrame(syncViewHeights);
+      }
+
+      function syncViewHeights() {
+        const targetHeight = netEl.offsetHeight;
+        if (!targetHeight) return;
+        if (listEl) listEl.style.minHeight = `${targetHeight}px`;
+      }
+
+      function logState(label) {
+        const row = document.createElement("pre");
+        row.className = "history-row csv-line";
+        const title = document.createElement("span");
+        title.className = "history-label";
+        title.textContent = label;
+        row.appendChild(title);
+        row.append(" | ");
+        row.insertAdjacentHTML("beforeend", formatCsv(faceColors()));
+        historyEl.prepend(row);
+      }
+
+      function applyAndLog(move) {
+        applyMove(move);
+        step += 1;
+        logState(`Step ${step}: ${move}`);
+      }
+
+      function applyMoves(moves) {
+        moves.forEach((move) => applyAndLog(move));
+        renderViews();
+      }
+
+      const moveList = [
+        "R",
+        "R'",
+        "R2",
+        "L",
+        "L'",
+        "L2",
+        "U",
+        "U'",
+        "U2",
+        "D",
+        "D'",
+        "D2",
+        "F",
+        "F'",
+        "F2",
+        "B",
+        "B'",
+        "B2",
+      ];
+
+      const algoSequences = [
+        { id: "sexy", label: "🔥 Sexy move", seq: ["R", "U", "R'", "U'"] },
+        { id: "left-hat", label: "🧢 Chapeau gauche", seq: ["U'", "L'", "U", "L", "U", "F", "U'", "F'"] },
+        { id: "right-hat", label: "🎩 Chapeau droite", seq: ["U", "R", "U'", "R'", "U'", "F'", "U", "F"] },
+        { id: "yellow-cross", label: "💛 Croix jaune", seq: ["F", "R", "U", "R'", "U'", "F'"] },
+        { id: "chair-right", label: "🪑 Chaise droite", seq: ["R", "U2", "R'", "U'", "R", "U'", "R'"] },
+        { id: "left-chair", label: "🪑 Chaise gauche", seq: ["L'", "U2", "L", "U", "L'", "U", "L"] },
+        { id: "right-friends", label: "🤝 Amis de droite", seq: ["R", "U'", "L'", "U", "R'", "U'", "L", "U"] },
+        { id: "left-friends", label: "🤝 Amis de gauche", seq: ["L'", "U", "R", "U'", "L", "U", "R'", "U'"] },
+      ];
+
+      const algoSteps = {};
+      const algoSpans = {};
+
+      function buildMoveButtons() {
+        if (!moveButtonsEl) return;
+        moveButtonsEl.innerHTML = "";
+        moveList.forEach((move) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = move;
+          button.addEventListener("click", () => {
+            applyAndLog(move);
+            renderViews();
+          });
+          moveButtonsEl.appendChild(button);
+        });
+      }
+
+      function buildAlgoRows() {
+        if (!algoRowsEl) return;
+        algoRowsEl.innerHTML = "";
+        algoSequences.forEach((algo) => {
+          algoSteps[algo.id] = 0;
+          const row = document.createElement("div");
+          row.className = "algo-row";
+          const main = document.createElement("button");
+          main.type = "button";
+          main.className = "algo-main";
+          const seqHtml = algo.seq
+            .map((move) => `<span class="move-step" data-move="${move}">${move}</span>`)
+            .join(" ");
+          main.innerHTML = `${algo.label} · ${seqHtml}`;
+          const stepBtn = document.createElement("button");
+          stepBtn.type = "button";
+          stepBtn.className = "algo-step";
+          stepBtn.setAttribute("aria-label", "Pas a pas");
+          stepBtn.innerHTML = '<i class="fa-solid fa-forward-step"></i>';
+          row.appendChild(main);
+          row.appendChild(stepBtn);
+          algoRowsEl.appendChild(row);
+          algoSpans[algo.id] = Array.from(main.querySelectorAll(".move-step"));
+          main.addEventListener("click", () => {
+            clearAlgoHighlight(algo.id);
+            algoSteps[algo.id] = 0;
+            applyMoves(algo.seq);
+          });
+          stepBtn.addEventListener("click", () => {
+            stepAlgo(algo.id, algo.seq);
+          });
+        });
+      }
+
+      function highlightAlgoStep(key, index) {
+        const spans = algoSpans[key];
+        if (!spans) return;
+        spans.forEach((span, idx) => span.classList.toggle("active", idx === index));
+      }
+
+      function clearAlgoHighlight(key) {
+        const spans = algoSpans[key];
+        if (!spans) return;
+        spans.forEach((span) => span.classList.remove("active"));
+      }
+
+      function clearAllAlgoHighlights() {
+        Object.keys(algoSpans).forEach((key) => clearAlgoHighlight(key));
+      }
+
+      function stepAlgo(key, sequence) {
+        const index = algoSteps[key] % sequence.length;
+        highlightAlgoStep(key, index);
+        algoSteps[key] = (index + 1) % sequence.length;
+        applyAndLog(sequence[index]);
+        renderViews();
+      }
+
+      function resetCube() {
+        buildCoords();
+        stickers = createSolvedStickers();
+        step = 0;
+        historyEl.innerHTML = "";
+        clearAllAlgoHighlights();
+        logState("Step 0: reset");
+        renderViews();
+      }
+
+      document.getElementById("apply").addEventListener("click", () => {
+        const input = document.getElementById("sequence");
+        const moves = parseSequence(input.value);
+        if (!moves.length) return;
+        applyMoves(moves);
+      });
+
+      document.getElementById("reset").addEventListener("click", () => {
+        resetCube();
+      });
+
+      buildMoveButtons();
+      buildAlgoRows();
+      resetCube();
+    </script>
+  </body>
+</html>
